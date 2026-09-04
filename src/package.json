@@ -1,6 +1,6 @@
 {
   "name": "esynapsing-correu",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Conector de correo SMTP/IMAP para Claude Desktop, ChatGPT de escritorio, Codex y clientes MCP compatibles (eSynapsing)",
   "type": "module",
   "private": true,

@@ -4,48 +4,53 @@
 # Claude Desktop NO necesita esto: alli la configuracion se rellena en el
 # formulario de la extension y la contrasena va al almacen del sistema.
 #
-# Dos formas de usarlo:
-#
-#   1. Interactiva, que es lo normal. Sin parametros, pregunta los datos uno a
-#      uno como un formulario:
-#        .\configure-windows.ps1
-#
-#   2. Con parametros, para instalaciones desatendidas:
-#        .\configure-windows.ps1 -EmailAddress info@empresa.com -AllowedRecipientDomains "empresa.com"
+# Se puede ejecutar tantas veces como haga falta, en cualquier momento: si ya
+# hay una configuracion guardada, muestra un menu para editar solo lo que se
+# quiera cambiar (correo y contrasena / servidor SMTP / servidor IMAP) sin
+# tener que repetir el resto. Si no hay nada guardado, hace las mismas tres
+# preguntas una detras de otra.
 #
 # La contrasena se pide siempre por teclado, nunca se muestra, y se guarda
-# cifrada con DPAPI de Windows: solo este usuario de Windows puede descifrarla.
+# cifrada en este ordenador con DPAPI de Windows (ver Dpapi.ps1: usa
+# crypt32.dll directamente, no el modulo Microsoft.PowerShell.Security, que en
+# algunos equipos no carga).
+#
+# Con parametros, para instalaciones desatendidas de los campos avanzados:
+#   .\configure-windows.ps1 -EmailAddress info@empresa.com -AllowedRecipientDomains "empresa.com"
+# La contrasena sigue pidiendose por teclado incluso asi: nunca se acepta como
+# parametro, para que no quede en el historial de comandos ni en ningun script.
 
 param(
     [ValidatePattern('^$|^[^\s@]+@[^\s@]+\.[^\s@]+$')]
     [string]$EmailAddress = '',
 
     [string]$SenderName = '',
-
-    [ValidateSet('', 'auto', 'ionos-es', 'ionos-com', 'ionos-de', 'ovh', 'strato', 'hostinger', 'zoho-eu', 'zoho-com', 'gmail', 'cpanel', 'manual')]
     [string]$Provider = '',
-
     [string]$SmtpHost = '',
-    [ValidateRange(0, 65535)][int]$SmtpPort = 0,
+    [int]$SmtpPort = 0,
     [string]$ImapHost = '',
-    [ValidateRange(0, 65535)][int]$ImapPort = 0,
+    [int]$ImapPort = 0,
 
     [string]$AllowedRecipientDomains = '',
-    [ValidateRange(0, 200)][int]$MaxRecipientsPerEmail = 0,
-    [ValidateRange(0, 500)][int]$MaxEmailsPerDay = 0,
+    [int]$MaxRecipientsPerEmail = 0,
+    [int]$MaxEmailsPerDay = 0,
     [string]$AttachmentsDir = '',
-    [ValidateRange(0, 100)][int]$MaxAttachmentMb = 0,
+    [int]$MaxAttachmentMb = 0,
     [string]$SignatureHtml = '',
     [string]$ReadableFolders = '',
-    [ValidateRange(0, 100000)][int]$MaxBodyChars = 0,
-
+    [int]$MaxBodyChars = 0,
     [switch]$DoNotSaveToSent
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Dpapi.ps1')
 
-# Modo interactivo si no nos han dado el correo por parametro.
-$interactivo = [string]::IsNullOrWhiteSpace($EmailAddress)
+$stateDir = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.esynapsing-correu'
+$accountFile = Join-Path $stateDir 'account.json'
+$passwordFile = Join-Path $stateDir 'password.dpapi'
+New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
+
+# ---------- utilidades de pantalla ----------
 
 function Preguntar {
     param([string]$Texto, [string]$PorDefecto = '', [switch]$Obligatorio)
@@ -69,106 +74,214 @@ function PreguntarSiNo {
     return ($r -eq 's' -or $r -eq 'si' -or $r -eq 'y' -or $r -eq 'yes')
 }
 
-if ($interactivo) {
+function Titulo {
+    param([string]$Texto)
+    Write-Host ''
+    Write-Host ("  " + $Texto) -ForegroundColor Cyan
+    Write-Host ('  ' + ('-' * $Texto.Length))
+}
+
+# ---------- estado: cargar lo que ya hubiera guardado ----------
+
+$cuenta = [ordered]@{
+    EMAIL_ADDRESS = ''
+    SENDER_NAME = ''
+    EMAIL_PROVIDER = 'auto'
+    SMTP_HOST = ''
+    SMTP_PORT = 465
+    IMAP_HOST = ''
+    IMAP_PORT = 993
+    SAVE_TO_SENT = $true
+    ALLOWED_RECIPIENT_DOMAINS = ''
+    MAX_RECIPIENTS_PER_EMAIL = 10
+    MAX_EMAILS_PER_DAY = 20
+    ATTACHMENTS_DIR = ''
+    MAX_ATTACHMENT_MB = 20
+    SIGNATURE_HTML = ''
+    READABLE_FOLDERS = ''
+    MAX_BODY_CHARS = 8000
+}
+$existia = $false
+if (Test-Path $accountFile) {
+    try {
+        $guardado = Get-Content -LiteralPath $accountFile -Raw | ConvertFrom-Json
+        foreach ($clave in @($cuenta.Keys)) {
+            if ($null -ne $guardado.$clave) { $cuenta[$clave] = $guardado.$clave }
+        }
+        $existia = $true
+    } catch {
+        Write-Host '  Aviso: no se pudo leer la configuracion anterior, se parte de cero.' -ForegroundColor Yellow
+    }
+}
+$habiaContrasena = Test-Path $passwordFile
+
+# En una tabla hash, no en una variable suelta: una tabla hash es un tipo por
+# referencia en PowerShell, asi que las funciones de abajo pueden modificarla
+# sin depender de $script:, que con dot-sourcing no siempre apunta a la misma
+# variable que el nivel superior del script (se detecto probando el script:
+# la funcion decia "contrasena actualizada" pero Guardar no la escribia).
+$estado = @{ NuevaContrasenaB64 = $null }   # $null = no tocar la contrasena guardada
+
+# ---------- secciones ----------
+
+function Editar-CorreoYContrasena {
+    Titulo 'Correo y contrasena'
+    while ($true) {
+        $e = Preguntar 'Direccion de correo' $cuenta['EMAIL_ADDRESS'] -Obligatorio
+        if ($e -match '^[^\s@]+@[^\s@]+\.[^\s@]+$') { $cuenta['EMAIL_ADDRESS'] = $e; break }
+        Write-Host '  Eso no parece una direccion de correo valida.' -ForegroundColor Yellow
+    }
+    if (-not $cuenta['SENDER_NAME']) { $cuenta['SENDER_NAME'] = $cuenta['EMAIL_ADDRESS'] }
+
+    $cambiar = if ($habiaContrasena) { PreguntarSiNo 'Cambiar la contrasena guardada?' $false } else { $true }
+    if ($cambiar) {
+        $secure = Read-Host '  Contrasena del buzon (no se mostrara)' -AsSecureString
+        $plain = ConvertFrom-SecureStringPlain $secure
+        if ([string]::IsNullOrEmpty($plain)) {
+            Write-Host '  La contrasena no puede estar vacia. No se ha cambiado.' -ForegroundColor Yellow
+        } else {
+            $estado.NuevaContrasenaB64 = Protect-Text $plain
+            Write-Host '  Contrasena actualizada (se guardara al confirmar).' -ForegroundColor Green
+        }
+        $plain = $null
+    }
+}
+
+function Editar-Servidor {
+    param([string]$Etiqueta, [string]$ClaveHost, [string]$ClavePuerto, [int]$PuertoPorDefecto)
+    Titulo $Etiqueta
+    $actual = if ($cuenta[$ClaveHost]) { $cuenta[$ClaveHost] + ':' + $cuenta[$ClavePuerto] } else { 'automatico (se detecta al verificar)' }
+    Write-Host ('  Ahora mismo: ' + $actual)
+    Write-Host ''
+    Write-Host '  1) Detectar automaticamente (recomendado)'
+    Write-Host '  2) Especificar servidor y puerto a mano'
+    Write-Host '  0) Volver sin cambiar'
+    $op = Preguntar 'Elige una opcion' '0'
+    switch ($op) {
+        '1' {
+            $cuenta[$ClaveHost] = ''
+            $cuenta[$ClavePuerto] = $PuertoPorDefecto
+            Write-Host '  Se detectara automaticamente.' -ForegroundColor Green
+        }
+        '2' {
+            $h = Preguntar 'Servidor' $cuenta[$ClaveHost] -Obligatorio
+            $puertoActual = $cuenta[$ClavePuerto]
+            if (-not $puertoActual) { $puertoActual = $PuertoPorDefecto }
+            $p = Preguntar 'Puerto' $puertoActual
+            $cuenta[$ClaveHost] = $h
+            $cuenta[$ClavePuerto] = [int]$p
+            Write-Host '  Guardado.' -ForegroundColor Green
+        }
+        default { Write-Host '  Sin cambios.' }
+    }
+}
+
+function Guardar {
+    if (-not $cuenta['EMAIL_ADDRESS']) { throw 'Falta la direccion de correo. Ve a la opcion 1 antes de guardar.' }
+    if (-not $habiaContrasena -and -not $estado.NuevaContrasenaB64) { throw 'Falta la contrasena. Ve a la opcion 1 antes de guardar.' }
+
+    $cuenta | ConvertTo-Json | Set-Content -LiteralPath $accountFile -Encoding UTF8
+    if ($estado.NuevaContrasenaB64) {
+        Set-Content -LiteralPath $passwordFile -Value $estado.NuevaContrasenaB64 -Encoding ASCII
+    }
+
+    Write-Host ''
+    Write-Host '  Configuracion guardada.' -ForegroundColor Green
+    Write-Host ('  Cuenta: ' + $cuenta['EMAIL_ADDRESS'])
+    Write-Host ('  SMTP:   ' + $(if ($cuenta['SMTP_HOST']) { $cuenta['SMTP_HOST'] + ':' + $cuenta['SMTP_PORT'] } else { 'automatico' }))
+    Write-Host ('  IMAP:   ' + $(if ($cuenta['IMAP_HOST']) { $cuenta['IMAP_HOST'] + ':' + $cuenta['IMAP_PORT'] } else { 'automatico' }))
+    if (-not $cuenta['ALLOWED_RECIPIENT_DOMAINS']) {
+        Write-Host ''
+        Write-Host '  Nota: no hay ninguna restriccion de dominios de destinatarios, asi' -ForegroundColor Yellow
+        Write-Host '  que se podra escribir a cualquier direccion. Para limitarlo, vuelve a' -ForegroundColor Yellow
+        Write-Host '  ejecutar este configurador con -AllowedRecipientDomains "tudominio.com".' -ForegroundColor Yellow
+    }
+    Write-Host ''
+    Write-Host '  La contrasena esta cifrada con Windows DPAPI: solo este usuario de'
+    Write-Host '  Windows puede descifrarla. No queda en ningun archivo de texto.'
+    Write-Host ''
+    Write-Host '  SIGUIENTE PASO:' -ForegroundColor Cyan
+    Write-Host '  1. Cierra Codex o ChatGPT de escritorio del todo y vuelve a abrirlo.'
+    Write-Host '  2. Escribe: "Comprueba si mi cuenta de correo esta bien configurada".'
+    Write-Host ''
+}
+
+# ---------- modo con parametros (instalacion desatendida de campos avanzados) ----------
+
+$modoParametros = $PSBoundParameters.ContainsKey('EmailAddress') -or $PSBoundParameters.ContainsKey('SmtpHost') -or $PSBoundParameters.ContainsKey('ImapHost')
+
+if ($modoParametros) {
+    if ($PSBoundParameters.ContainsKey('EmailAddress') -and $EmailAddress) { $cuenta['EMAIL_ADDRESS'] = $EmailAddress }
+    if ($SenderName) { $cuenta['SENDER_NAME'] = $SenderName }
+    if ($Provider) { $cuenta['EMAIL_PROVIDER'] = $Provider }
+    if ($PSBoundParameters.ContainsKey('SmtpHost')) { $cuenta['SMTP_HOST'] = $SmtpHost; $cuenta['SMTP_PORT'] = if ($SmtpPort) { $SmtpPort } else { 465 } }
+    if ($PSBoundParameters.ContainsKey('ImapHost')) { $cuenta['IMAP_HOST'] = $ImapHost; $cuenta['IMAP_PORT'] = if ($ImapPort) { $ImapPort } else { 993 } }
+    if ($PSBoundParameters.ContainsKey('AllowedRecipientDomains')) { $cuenta['ALLOWED_RECIPIENT_DOMAINS'] = $AllowedRecipientDomains }
+    if ($MaxRecipientsPerEmail) { $cuenta['MAX_RECIPIENTS_PER_EMAIL'] = $MaxRecipientsPerEmail }
+    if ($MaxEmailsPerDay) { $cuenta['MAX_EMAILS_PER_DAY'] = $MaxEmailsPerDay }
+    if ($PSBoundParameters.ContainsKey('AttachmentsDir')) { $cuenta['ATTACHMENTS_DIR'] = $AttachmentsDir }
+    if ($MaxAttachmentMb) { $cuenta['MAX_ATTACHMENT_MB'] = $MaxAttachmentMb }
+    if ($PSBoundParameters.ContainsKey('SignatureHtml')) { $cuenta['SIGNATURE_HTML'] = $SignatureHtml }
+    if ($PSBoundParameters.ContainsKey('ReadableFolders')) { $cuenta['READABLE_FOLDERS'] = $ReadableFolders }
+    if ($MaxBodyChars) { $cuenta['MAX_BODY_CHARS'] = $MaxBodyChars }
+    if ($DoNotSaveToSent.IsPresent) { $cuenta['SAVE_TO_SENT'] = $false }
+
+    if (-not $cuenta['EMAIL_ADDRESS']) { throw 'Falta -EmailAddress.' }
+
+    $cambiar = if ($habiaContrasena) { PreguntarSiNo 'Cambiar la contrasena guardada?' $false } else { $true }
+    if ($cambiar) {
+        $secure = Read-Host '  Contrasena del buzon (no se mostrara)' -AsSecureString
+        $plain = ConvertFrom-SecureStringPlain $secure
+        if ([string]::IsNullOrEmpty($plain)) { throw 'La contrasena no puede estar vacia.' }
+        $estado.NuevaContrasenaB64 = Protect-Text $plain
+        $plain = $null
+    }
+
+    Guardar
+    return
+}
+
+# ---------- modo interactivo ----------
+
+Write-Host ''
+Write-Host '  eSynapsing Correu - configuracion' -ForegroundColor Cyan
+Write-Host '  ---------------------------------'
+
+if (-not $existia) {
+    # Primera vez: las tres preguntas seguidas, sin menu.
+    Write-Host '  Vamos a guardar los datos de tu buzon. La contrasena no se'
+    Write-Host '  mostrara y quedara cifrada en este ordenador.'
+    Editar-CorreoYContrasena
+    Editar-Servidor -Etiqueta 'Servidor SMTP (envio)' -ClaveHost 'SMTP_HOST' -ClavePuerto 'SMTP_PORT' -PuertoPorDefecto 465
+    Editar-Servidor -Etiqueta 'Servidor IMAP (lectura del buzon)' -ClaveHost 'IMAP_HOST' -ClavePuerto 'IMAP_PORT' -PuertoPorDefecto 993
+    Guardar
+    Write-Host '  Pulsa Intro para cerrar.'
+    [void](Read-Host)
+    return
+}
+
+# Ya habia configuracion: menu para tocar solo lo que haga falta.
+while ($true) {
     Write-Host ''
     Write-Host '  eSynapsing Correu - configuracion' -ForegroundColor Cyan
     Write-Host '  ---------------------------------'
-    Write-Host '  Vamos a guardar los datos de tu buzon. La contrasena no se'
-    Write-Host '  mostrara y quedara cifrada en este ordenador.'
+    Write-Host ('  Correo:      ' + $cuenta['EMAIL_ADDRESS'])
+    Write-Host ('  SMTP:        ' + $(if ($cuenta['SMTP_HOST']) { $cuenta['SMTP_HOST'] + ':' + $cuenta['SMTP_PORT'] } else { 'automatico' }))
+    Write-Host ('  IMAP:        ' + $(if ($cuenta['IMAP_HOST']) { $cuenta['IMAP_HOST'] + ':' + $cuenta['IMAP_PORT'] } else { 'automatico' }))
+    Write-Host ('  Contrasena:  ' + $(if ($estado.NuevaContrasenaB64) { 'cambiada, pendiente de guardar' } elseif ($habiaContrasena) { 'guardada' } else { 'SIN GUARDAR' }))
     Write-Host ''
-
-    while ($true) {
-        $EmailAddress = Preguntar 'Tu direccion de correo' -Obligatorio
-        if ($EmailAddress -match '^[^\s@]+@[^\s@]+\.[^\s@]+$') { break }
-        Write-Host '  Eso no parece una direccion de correo valida.' -ForegroundColor Yellow
+    Write-Host '  1) Correo y contrasena'
+    Write-Host '  2) Servidor SMTP (envio)'
+    Write-Host '  3) Servidor IMAP (lectura del buzon)'
+    Write-Host '  4) Guardar y salir'
+    Write-Host '  0) Salir sin guardar'
+    $op = Preguntar 'Elige una opcion' '4'
+    switch ($op) {
+        '1' { Editar-CorreoYContrasena }
+        '2' { Editar-Servidor -Etiqueta 'Servidor SMTP (envio)' -ClaveHost 'SMTP_HOST' -ClavePuerto 'SMTP_PORT' -PuertoPorDefecto 465 }
+        '3' { Editar-Servidor -Etiqueta 'Servidor IMAP (lectura del buzon)' -ClaveHost 'IMAP_HOST' -ClavePuerto 'IMAP_PORT' -PuertoPorDefecto 993 }
+        '4' { Guardar; Write-Host '  Pulsa Intro para cerrar.'; [void](Read-Host); return }
+        '0' { Write-Host '  Saliendo sin guardar cambios.' -ForegroundColor Yellow; return }
+        default { Write-Host '  Opcion no reconocida.' -ForegroundColor Yellow }
     }
-
-    $dominio = $EmailAddress.Split('@')[-1]
-    $SenderName = Preguntar 'Nombre que vera quien reciba tus correos' $EmailAddress
-
-    Write-Host ''
-    Write-Host '  Seguridad' -ForegroundColor Cyan
-    Write-Host '  Conviene limitar a que dominios se puede escribir. Es lo que'
-    Write-Host '  impide que un correo recibido consiga que se escriba a un tercero.'
-    $AllowedRecipientDomains = Preguntar 'Dominios permitidos (separados por comas)' $dominio
-
-    Write-Host ''
-    if (PreguntarSiNo 'Quieres revisar las opciones avanzadas?' $false) {
-        Write-Host ''
-        Write-Host '  Avanzado' -ForegroundColor Cyan
-        Write-Host '  Deja en blanco lo que quieras que se detecte solo.'
-        $Provider = Preguntar 'Proveedor (auto, ionos-es, ovh, gmail, manual...)' 'auto'
-        $SmtpHost = Preguntar 'Servidor SMTP (en blanco = detectar)' ''
-        if ($SmtpHost) { $SmtpPort = [int](Preguntar 'Puerto SMTP' '465') }
-        $ImapHost = Preguntar 'Servidor IMAP (en blanco = detectar)' ''
-        if ($ImapHost) { $ImapPort = [int](Preguntar 'Puerto IMAP' '993') }
-        $MaxRecipientsPerEmail = [int](Preguntar 'Maximo de destinatarios por correo' '10')
-        $MaxEmailsPerDay = [int](Preguntar 'Maximo de correos al dia' '20')
-        $AttachmentsDir = Preguntar 'Carpeta autorizada para adjuntos (en blanco = sin limite)' ''
-        $ReadableFolders = Preguntar 'Carpetas legibles (en blanco = entrada y enviados)' ''
-    }
-    Write-Host ''
-}
-
-# Valores por defecto de lo que no se haya indicado.
-if (-not $Provider) { $Provider = 'auto' }
-if ($SmtpPort -eq 0) { $SmtpPort = 465 }
-if ($ImapPort -eq 0) { $ImapPort = 993 }
-if ($MaxRecipientsPerEmail -eq 0) { $MaxRecipientsPerEmail = 10 }
-if ($MaxEmailsPerDay -eq 0) { $MaxEmailsPerDay = 20 }
-if ($MaxAttachmentMb -eq 0) { $MaxAttachmentMb = 20 }
-if ($MaxBodyChars -eq 0) { $MaxBodyChars = 8000 }
-if (-not $SenderName) { $SenderName = $EmailAddress }
-
-$stateDir = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.esynapsing-correu'
-New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
-
-$password = Read-Host '  Contrasena del buzon (no se mostrara)' -AsSecureString
-if ($password.Length -eq 0) { throw 'La contrasena no puede estar vacia.' }
-
-$account = [ordered]@{
-    EMAIL_ADDRESS = $EmailAddress
-    SENDER_NAME = $SenderName
-    EMAIL_PROVIDER = $Provider
-    SMTP_HOST = $SmtpHost
-    SMTP_PORT = $SmtpPort
-    IMAP_HOST = $ImapHost
-    IMAP_PORT = $ImapPort
-    SAVE_TO_SENT = (-not $DoNotSaveToSent.IsPresent)
-    ALLOWED_RECIPIENT_DOMAINS = $AllowedRecipientDomains
-    MAX_RECIPIENTS_PER_EMAIL = $MaxRecipientsPerEmail
-    MAX_EMAILS_PER_DAY = $MaxEmailsPerDay
-    ATTACHMENTS_DIR = $AttachmentsDir
-    MAX_ATTACHMENT_MB = $MaxAttachmentMb
-    SIGNATURE_HTML = $SignatureHtml
-    READABLE_FOLDERS = $ReadableFolders
-    MAX_BODY_CHARS = $MaxBodyChars
-}
-
-$account | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stateDir 'account.json') -Encoding UTF8
-$password | ConvertFrom-SecureString | Set-Content -LiteralPath (Join-Path $stateDir 'password.dpapi') -Encoding ASCII
-
-Write-Host ''
-Write-Host '  Configuracion guardada.' -ForegroundColor Green
-Write-Host ("  Cuenta:              " + $EmailAddress)
-Write-Host ("  Remitente:           " + $SenderName)
-Write-Host ("  Limite diario:       " + $MaxEmailsPerDay + " correos")
-if ($AllowedRecipientDomains) {
-    Write-Host ("  Dominios permitidos: " + $AllowedRecipientDomains)
-} else {
-    Write-Host '  Dominios permitidos: TODOS' -ForegroundColor Yellow
-    Write-Host '    Sin esta lista se puede escribir a cualquier direccion.' -ForegroundColor Yellow
-}
-Write-Host ''
-Write-Host '  La contrasena esta cifrada con Windows DPAPI: solo este usuario de'
-Write-Host '  Windows puede descifrarla. No queda en ningun archivo de texto.'
-Write-Host ''
-Write-Host '  SIGUIENTE PASO:' -ForegroundColor Cyan
-Write-Host '  1. Cierra Codex o ChatGPT de escritorio del todo y vuelve a abrirlo.'
-Write-Host '  2. Escribe: "Comprueba si mi cuenta de correo esta bien configurada".'
-Write-Host ''
-
-if ($interactivo) {
-    Write-Host '  Pulsa Intro para cerrar.'
-    [void](Read-Host)
 }

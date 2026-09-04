@@ -7,15 +7,17 @@ description: Preparar, verificar, enviar y revisar correo mediante el servidor S
 
 Usa las herramientas de eSynapsing Correu para trabajar con la cuenta configurada en el equipo del usuario.
 
-## Configurar la cuenta la primera vez
+## Abrir la configuración del correo
 
-Si el usuario pide configurar su correo, o si `verify_email_setup` dice que faltan datos, **no le pidas la contraseña en el chat**. Abre el configurador en su propia ventana, donde la teclea él directamente:
+Si el usuario pide configurar, cambiar o revisar su correo (la primera vez o cualquier otra), o si `verify_email_setup` dice que faltan datos, **no le pidas nada en el chat, ni siquiera el correo**. Abre el configurador en su propia ventana, donde responde él directamente:
 
 ```powershell
 Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',(Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
 ```
 
-El configurador pregunta la dirección, el nombre del remitente, los dominios permitidos y la contraseña, y lo guarda cifrado con DPAPI. Después dile al usuario que cierre el cliente por completo y lo vuelva a abrir, porque la configuración se lee al arrancar.
+Es reentrable: si ya hay una cuenta guardada, se abre un menú (correo y contraseña / servidor SMTP / servidor IMAP) para tocar solo lo que haga falta, sin repetir el resto ni volver a pedir la contraseña si no se quiere cambiar. Si no hay nada guardado, hace esas mismas tres preguntas seguidas. Se puede volver a abrir tantas veces como se quiera, siempre que el usuario lo pida en el chat — por ejemplo "abre la configuración del correo" o "cambia el servidor IMAP".
+
+Después de guardar, dile al usuario que cierre el cliente por completo y lo vuelva a abrir, porque la configuración se lee al arrancar.
 
 En Claude Desktop esto no aplica: allí la configuración se rellena en el formulario de la extensión.
 
