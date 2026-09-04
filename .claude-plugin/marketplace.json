@@ -1,19 +1,30 @@
 {
   "name": "esynapsing",
-  "interface": {
-    "displayName": "eSynapsing"
+  "owner": {
+    "name": "eSynapsing",
+    "email": "info@esynapsing.com",
+    "url": "https://www.esynapsing.com"
   },
+  "description": "Plugins de eSynapsing para Claude Code.",
   "plugins": [
     {
       "name": "esynapsing-correu",
-      "source": {
-        "source": "local",
-        "path": "./plugins/esynapsing-correu"
+      "source": "./plugins/esynapsing-correu",
+      "description": "Envia, lee y busca correo en un buzon SMTP/IMAP propio, sin depender de Google ni Microsoft.",
+      "version": "1.3.1",
+      "author": {
+        "name": "eSynapsing",
+        "email": "info@esynapsing.com"
       },
-      "policy": {
-        "installation": "AVAILABLE"
-      },
-      "category": "Productivity"
+      "homepage": "https://www.esynapsing.com",
+      "license": "MIT",
+      "category": "Productivity",
+      "keywords": [
+        "correo",
+        "email",
+        "smtp",
+        "imap"
+      ]
     }
   ]
 }

@@ -165,7 +165,13 @@ copy(staging, pluginDir);
 // Dentro del plugin no pinta nada el manifest de Claude Desktop.
 rmrf(path.join(pluginDir, 'manifest.json'));
 
-const marketplace = {
+// Codex y Claude Code leen marketplace.json con esquemas distintos: mezclar
+// los dos en un unico objeto es lo que rompia "Agregar marketplace" en Claude
+// con "No se pudo agregar el marketplace" (le faltaba el "owner" obligatorio
+// y su "source" no admite el objeto {source:'local', path:...} de Codex).
+
+// Codex: .agents/plugins/marketplace.json
+const marketplaceCodex = {
   name: 'esynapsing',
   interface: { displayName: 'eSynapsing' },
   plugins: [
@@ -177,10 +183,36 @@ const marketplace = {
     },
   ],
 };
-for (const dir of ['.agents/plugins', '.claude-plugin']) {
-  const f = path.join(market, dir, 'marketplace.json');
+{
+  const f = path.join(market, '.agents/plugins', 'marketplace.json');
   fs.mkdirSync(path.dirname(f), { recursive: true });
-  fs.writeFileSync(f, JSON.stringify(marketplace, null, 2) + '\n', 'utf8');
+  fs.writeFileSync(f, JSON.stringify(marketplaceCodex, null, 2) + '\n', 'utf8');
+}
+
+// Claude Code: .claude-plugin/marketplace.json. Exige "owner", y la fuente de
+// cada plugin es una ruta relativa en string, no un objeto.
+const marketplaceClaude = {
+  name: 'esynapsing',
+  owner: { name: 'eSynapsing', email: 'info@esynapsing.com', url: 'https://www.esynapsing.com' },
+  description: 'Plugins de eSynapsing para Claude Code.',
+  plugins: [
+    {
+      name: 'esynapsing-correu',
+      source: './plugins/esynapsing-correu',
+      description: 'Envia, lee y busca correo en un buzon SMTP/IMAP propio, sin depender de Google ni Microsoft.',
+      version,
+      author: { name: 'eSynapsing', email: 'info@esynapsing.com' },
+      homepage: 'https://www.esynapsing.com',
+      license: 'MIT',
+      category: 'Productivity',
+      keywords: ['correo', 'email', 'smtp', 'imap'],
+    },
+  ],
+};
+{
+  const f = path.join(market, '.claude-plugin', 'marketplace.json');
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, JSON.stringify(marketplaceClaude, null, 2) + '\n', 'utf8');
 }
 // El .mcpb tambien va al repo, para quien use Claude Desktop.
 copy(mcpb, path.join(market, 'claude-desktop', path.basename(mcpb)));
