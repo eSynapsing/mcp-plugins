@@ -7,9 +7,21 @@ description: Preparar, verificar, enviar y revisar correo mediante el servidor S
 
 Usa las herramientas de eSynapsing Correu para trabajar con la cuenta configurada en el equipo del usuario.
 
+## Configurar la cuenta la primera vez
+
+Si el usuario pide configurar su correo, o si `verify_email_setup` dice que faltan datos, **no le pidas la contraseña en el chat**. Abre el configurador en su propia ventana, donde la teclea él directamente:
+
+```powershell
+Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',(Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+```
+
+El configurador pregunta la dirección, el nombre del remitente, los dominios permitidos y la contraseña, y lo guarda cifrado con DPAPI. Después dile al usuario que cierre el cliente por completo y lo vuelva a abrir, porque la configuración se lee al arrancar.
+
+En Claude Desktop esto no aplica: allí la configuración se rellena en el formulario de la extensión.
+
 ## Seguridad y autorización
 
-- Nunca pidas ni aceptes contraseñas del buzón dentro de la conversación. Si falta configuración, indica que se ejecute el configurador local incluido con el plugin.
+- Nunca pidas ni aceptes contraseñas del buzón dentro de la conversación. Si falta configuración, abre el configurador (sección de arriba): pide la contraseña por teclado en su propia ventana, y así no pasa por el chat.
 - Antes de llamar a `send_email`, muestra al usuario los destinatarios, el asunto, el cuerpo final y los adjuntos, y solicita una confirmación inequívoca. Una petición anterior de redactar o preparar no autoriza el envío.
 - Una confirmación solo sirve para la versión exacta mostrada. Si cambia cualquier destinatario, asunto, cuerpo o adjunto, vuelve a pedir confirmación.
 - No dividas un envío en varios mensajes para eludir límites de destinatarios, dominios o cuota diaria.

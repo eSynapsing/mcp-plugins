@@ -157,7 +157,7 @@ const TOOLS = [
 ];
 
 const server = new Server(
-  { name: 'esynapsing-correu', version: '1.3.0' },
+  { name: 'esynapsing-correu', version: '1.3.1' },
   {
     capabilities: { tools: {} },
     instructions:
