@@ -28,8 +28,14 @@ Falta un paso más, porque ni Codex ni ChatGPT tienen almacén de credenciales
 para plugins: hay que guardar la contraseña del buzón, cifrada.
 
 ```powershell
-& "$env:USERPROFILE\.codex\plugins\esynapsing-correu\scripts\configure-windows.ps1" -EmailAddress info@tuempresa.com -AllowedRecipientDomains "tuempresa.com"
+& (Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName -EmailAddress info@tuempresa.com -AllowedRecipientDomains "tuempresa.com"
 ```
+
+Codex instala cada plugin en una carpeta que incluye el nombre del marketplace
+y el número de versión (`…\plugins\cache\esynapsing\esynapsing-correu\1.3.0\`),
+así que la ruta cambia en cada actualización. El comando de arriba localiza
+solo la versión instalada más reciente: lo único que tienes que cambiar es el
+correo y los dominios permitidos.
 
 Pide la contraseña por teclado sin mostrarla y la cifra con DPAPI de Windows:
 solo ese usuario de Windows puede descifrarla. No queda en ningún archivo de

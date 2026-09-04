@@ -25,8 +25,12 @@ para plugins: hay que guardar la contraseña del buzón, cifrada, con el
 configurador que trae el propio plugin.
 
 ```powershell
-& "$env:USERPROFILE\.codex\plugins\esynapsing-correu\scripts\configure-windows.ps1" -EmailAddress info@tuempresa.com -AllowedRecipientDomains "tuempresa.com"
+& (Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName -EmailAddress info@tuempresa.com -AllowedRecipientDomains "tuempresa.com"
 ```
+
+Codex instala cada plugin en una carpeta que incluye el nombre del marketplace
+y el número de versión, así que la ruta cambia en cada actualización. El
+comando de arriba localiza solo la versión instalada más reciente.
 
 Pide la contraseña por teclado sin mostrarla y la cifra con DPAPI de Windows:
 solo ese usuario de Windows puede descifrarla. No queda en ningún archivo de
