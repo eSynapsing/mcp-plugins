@@ -3,9 +3,6 @@
 Marketplace de plugins de eSynapsing para Codex, la app de escritorio de
 ChatGPT y Claude Code. Contiene también el paquete para Claude Desktop.
 
-> **Antes de publicar:** sustituye `TU-ORG/TU-REPO` por la ruta real del
-> repositorio en los comandos de abajo.
-
 ## eSynapsing Correu
 
 Envía, lee y busca correo en un buzón SMTP/IMAP propio, sin depender de los
@@ -22,7 +19,7 @@ buscar y leer un correo concreto.
 ### Codex / app de escritorio de ChatGPT
 
 ```bash
-codex plugin marketplace add TU-ORG/TU-REPO
+codex plugin marketplace add eSynapsing/mcp-plugins
 ```
 
 Después instala **eSynapsing Correu** desde la pestaña de plugins.

@@ -15,7 +15,7 @@ Gmail con contraseña de aplicación.
 ### Codex / app de escritorio de ChatGPT
 
 ```bash
-codex plugin marketplace add TU-ORG/plugins
+codex plugin marketplace add eSynapsing/mcp-plugins
 ```
 
 Después instala **eSynapsing Correu** desde la pestaña de plugins.
