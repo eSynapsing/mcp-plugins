@@ -1,0 +1,19 @@
+{
+  "name": "esynapsing",
+  "interface": {
+    "displayName": "eSynapsing"
+  },
+  "plugins": [
+    {
+      "name": "esynapsing-correu",
+      "source": {
+        "source": "local",
+        "path": "./plugins/esynapsing-correu"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

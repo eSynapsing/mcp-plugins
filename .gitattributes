@@ -1,0 +1,15 @@
+# Normalizamos los finales de linea para que el repo no cambie segun quien
+# clone. Sin esto, git convierte a CRLF en Windows y el mismo commit da
+# ficheros distintos en Mac o Linux.
+
+# Texto: LF en el repositorio.
+* text=auto eol=lf
+
+# Scripts de PowerShell: CRLF, que es lo que espera Windows.
+*.ps1 text eol=crlf
+
+# Binarios: que git no los toque.
+*.png binary
+*.mcpb binary
+*.zip binary
+*.ico binary

@@ -1,0 +1,15 @@
+# Dependencias: no van al repo. El servidor se distribuye empaquetado en
+# plugins/esynapsing-correu/dist/server.mjs, generado por src/scripts/build.mjs.
+node_modules/
+
+# Salida intermedia del build. Lo que se publica se copia a plugins/ y a
+# claude-desktop/, y eso si va versionado.
+src/build/
+src/dist/
+
+# Ruido del sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+*.log
+npm-debug.log*

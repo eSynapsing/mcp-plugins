@@ -1,0 +1,42 @@
+{
+  "name": "esynapsing-correu",
+  "version": "1.3.0",
+  "description": "Envia, lee y busca correo en cuentas SMTP/IMAP propias, sin depender de Google ni Microsoft.",
+  "author": {
+    "name": "eSynapsing",
+    "email": "info@esynapsing.com",
+    "url": "https://www.esynapsing.com"
+  },
+  "homepage": "https://www.esynapsing.com",
+  "license": "MIT",
+  "keywords": [
+    "correo",
+    "email",
+    "smtp",
+    "imap",
+    "eSynapsing"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "eSynapsing Correu",
+    "shortDescription": "Correo SMTP/IMAP propio: enviar, leer y buscar",
+    "longDescription": "Conecta el cliente con un buzon SMTP/IMAP propio. Permite verificar la cuenta, enviar mensajes, listar y buscar correos, leer el contenido de uno concreto, consultar los ultimos enviados y revisar el registro local. Incluye limites de seguridad configurables: dominios de destinatarios permitidos, topes de destinatarios y de envios diarios, carpeta autorizada para adjuntos y carpetas legibles.",
+    "developerName": "eSynapsing",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://www.esynapsing.com",
+    "defaultPrompt": [
+      "Comprueba si mi cuenta de correo esta bien configurada.",
+      "Ensename los correos sin leer de la bandeja de entrada.",
+      "Busca los correos de este cliente del ultimo mes y resumelos.",
+      "Prepara un correo y pideme confirmacion antes de enviarlo."
+    ],
+    "brandColor": "#17A9A2",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  }
+}

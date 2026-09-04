@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "correo": {
+      "command": "node",
+      "args": [
+        "./scripts/start.mjs"
+      ],
+      "cwd": ".",
+      "startup_timeout_sec": 20,
+      "tool_timeout_sec": 90,
+      "default_tools_approval_mode": "writes",
+      "env_vars": [
+        "EMAIL_ADDRESS",
+        "EMAIL_PASSWORD",
+        "EMAIL_PROVIDER",
+        "SENDER_NAME",
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "IMAP_HOST",
+        "IMAP_PORT",
+        "SAVE_TO_SENT",
+        "ALLOWED_RECIPIENT_DOMAINS",
+        "MAX_RECIPIENTS_PER_EMAIL",
+        "MAX_EMAILS_PER_DAY",
+        "MAX_ATTACHMENT_MB",
+        "ATTACHMENTS_DIR",
+        "SIGNATURE_HTML",
+        "READABLE_FOLDERS",
+        "MAX_BODY_CHARS"
+      ]
+    }
+  }
+}

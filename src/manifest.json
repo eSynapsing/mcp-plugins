@@ -1,0 +1,211 @@
+{
+  "manifest_version": "0.3",
+  "name": "esynapsing-correu",
+  "display_name": "eSynapsing Correu",
+  "version": "1.3.0",
+  "description": "Envia, lee y busca correo en tu propia cuenta (SMTP/IMAP), sin Google ni Microsoft.",
+  "long_description": "Conecta Claude con el buzón de correo de tu empresa mediante SMTP e IMAP estándar. Sirve para cualquier proveedor: IONOS, OVH, Strato, Hostinger, Zoho, Gmail con contraseña de aplicación o cualquier alojamiento con cPanel.\n\nLos correos salen desde tu dirección real y se guarda una copia en tu carpeta de Enviados, igual que si los hubieras escrito tú. La contraseña se guarda en el almacén seguro del sistema operativo, nunca en un archivo de texto.\n\nIncluye límites de seguridad configurables: lista de dominios de destinatarios permitidos, número máximo de destinatarios por correo, máximo de correos al día y una carpeta autorizada para los adjuntos. Todos los envíos quedan registrados en un archivo local de auditoría.",
+  "author": {
+    "name": "eSynapsing",
+    "email": "info@esynapsing.com"
+  },
+  "icon": "icon.png",
+  "keywords": [
+    "correo",
+    "email",
+    "smtp",
+    "imap",
+    "ionos",
+    "eSynapsing"
+  ],
+  "license": "MIT",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "EMAIL_ADDRESS": "${user_config.email_address}",
+        "EMAIL_PASSWORD": "${user_config.password}",
+        "EMAIL_PROVIDER": "${user_config.provider}",
+        "SENDER_NAME": "${user_config.sender_name}",
+        "SMTP_HOST": "${user_config.smtp_host}",
+        "SMTP_PORT": "${user_config.smtp_port}",
+        "IMAP_HOST": "${user_config.imap_host}",
+        "IMAP_PORT": "${user_config.imap_port}",
+        "SAVE_TO_SENT": "${user_config.save_to_sent}",
+        "ALLOWED_RECIPIENT_DOMAINS": "${user_config.allowed_recipient_domains}",
+        "MAX_RECIPIENTS_PER_EMAIL": "${user_config.max_recipients_per_email}",
+        "MAX_EMAILS_PER_DAY": "${user_config.max_emails_per_day}",
+        "ATTACHMENTS_DIR": "${user_config.attachments_dir}",
+        "SIGNATURE_HTML": "${user_config.signature_html}",
+        "READABLE_FOLDERS": "${user_config.readable_folders}",
+        "MAX_BODY_CHARS": "${user_config.max_body_chars}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "verify_email_setup",
+      "description": "Comprueba la conexión con el servidor de correo y detecta automáticamente la configuración si no se conoce."
+    },
+    {
+      "name": "send_email",
+      "description": "Envía un correo desde la cuenta configurada, con copia en la carpeta de Enviados."
+    },
+    {
+      "name": "list_recent_sent",
+      "description": "Lista los últimos correos de la carpeta de Enviados del buzón."
+    },
+    {
+      "name": "email_send_log",
+      "description": "Muestra el registro local de envíos, incluidos fallos y bloqueos."
+    },
+    {
+      "name": "list_mail_folders",
+      "description": "Lista las carpetas del buzón e indica cuáles están autorizadas para lectura."
+    },
+    {
+      "name": "list_inbox",
+      "description": "Lista los correos de una carpeta sin descargar su contenido."
+    },
+    {
+      "name": "search_email",
+      "description": "Busca correos por remitente, destinatario, asunto, texto o fechas."
+    },
+    {
+      "name": "read_email",
+      "description": "Lee el contenido de un correo concreto, en modo solo lectura."
+    }
+  ],
+  "tools_generated": false,
+  "user_config": {
+    "email_address": {
+      "type": "string",
+      "title": "Dirección de correo",
+      "description": "La dirección desde la que se enviarán los correos. Por ejemplo: info@tuempresa.com",
+      "required": true
+    },
+    "password": {
+      "type": "string",
+      "title": "Contraseña del correo",
+      "description": "La contraseña del buzón. Si la cuenta es de Gmail o tiene verificación en dos pasos, hay que usar una contraseña de aplicación, no la habitual. Se guarda en el almacén seguro del sistema, no en ningún archivo.",
+      "sensitive": true,
+      "required": true
+    },
+    "sender_name": {
+      "type": "string",
+      "title": "Nombre del remitente",
+      "description": "El nombre que verá quien reciba el correo. Por ejemplo: Joana Teixidor — eSynapsing",
+      "required": false
+    },
+    "provider": {
+      "type": "string",
+      "title": "Proveedor de correo",
+      "description": "Déjalo en 'auto' y la extensión detectará sola el servidor la primera vez que le pidas verificar la configuración. Si prefieres fijarlo, escribe uno de estos: ionos-es, ionos-com, ionos-de, ovh, strato, hostinger, zoho-eu, zoho-com, gmail, cpanel, manual",
+      "default": "auto",
+      "required": false
+    },
+    "smtp_host": {
+      "type": "string",
+      "title": "Servidor SMTP (opcional)",
+      "description": "Solo si tu proveedor no está en la lista o la detección automática falla. Por ejemplo: smtp.tuempresa.com",
+      "required": false
+    },
+    "smtp_port": {
+      "type": "number",
+      "title": "Puerto SMTP (opcional)",
+      "description": "465 para conexión segura directa (lo habitual) o 587 si tu proveedor usa STARTTLS.",
+      "default": 465,
+      "min": 1,
+      "max": 65535,
+      "required": false
+    },
+    "imap_host": {
+      "type": "string",
+      "title": "Servidor IMAP (opcional)",
+      "description": "Necesario solo para guardar copia en la carpeta de Enviados. Por ejemplo: imap.tuempresa.com",
+      "required": false
+    },
+    "imap_port": {
+      "type": "number",
+      "title": "Puerto IMAP (opcional)",
+      "description": "993 en prácticamente todos los proveedores.",
+      "default": 993,
+      "min": 1,
+      "max": 65535,
+      "required": false
+    },
+    "save_to_sent": {
+      "type": "boolean",
+      "title": "Guardar copia en Enviados",
+      "description": "Deja una copia de cada correo en la carpeta de Enviados del buzón, para que aparezca también en Outlook, el móvil o el webmail.",
+      "default": true,
+      "required": false
+    },
+    "allowed_recipient_domains": {
+      "type": "string",
+      "title": "Dominios de destinatarios permitidos",
+      "description": "Medida de seguridad recomendada. Lista separada por comas de los únicos dominios a los que se podrá escribir, por ejemplo: tuempresa.com, clientehabitual.es. Si lo dejas vacío se podrá escribir a cualquier dirección.",
+      "required": false
+    },
+    "max_recipients_per_email": {
+      "type": "number",
+      "title": "Máximo de destinatarios por correo",
+      "description": "Evita envíos masivos por error. Cuenta Para, Cc y Cco juntos.",
+      "default": 10,
+      "min": 1,
+      "max": 200,
+      "required": false
+    },
+    "max_emails_per_day": {
+      "type": "number",
+      "title": "Máximo de correos al día",
+      "description": "Freno de seguridad. Si se alcanza, la extensión deja de enviar hasta el día siguiente.",
+      "default": 20,
+      "min": 1,
+      "max": 500,
+      "required": false
+    },
+    "attachments_dir": {
+      "type": "directory",
+      "title": "Carpeta autorizada para adjuntos",
+      "description": "Recomendado. Si la indicas, solo se podrán adjuntar archivos que estén dentro de esa carpeta. Si la dejas vacía, se podrá adjuntar cualquier archivo del ordenador.",
+      "required": false
+    },
+    "signature_html": {
+      "type": "string",
+      "title": "Firma (HTML, opcional)",
+      "description": "Se añade al final de los correos. Admite HTML sencillo, por ejemplo: <strong>Joana Teixidor</strong><br>eSynapsing<br>www.esynapsing.com",
+      "required": false
+    },
+    "readable_folders": {
+      "type": "string",
+      "title": "Carpetas que se pueden leer",
+      "description": "Lista separada por comas de las carpetas del buzón que Claude podrá leer, por ejemplo: INBOX, Facturas. Si lo dejas vacío solo podrá leer la bandeja de entrada y la de Enviados. Escribe * para permitir todas.",
+      "required": false
+    },
+    "max_body_chars": {
+      "type": "number",
+      "title": "Máximo de caracteres por correo leído",
+      "description": "Los correos más largos se truncan a este límite para no llenar la conversación.",
+      "default": 8000,
+      "min": 500,
+      "max": 100000,
+      "required": false
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
+  }
+}
