@@ -159,6 +159,14 @@ check('con MX de IONOS anade solo ese preset',
 check('detecta Microsoft 365 como no soportado',
   matchProviderByMx(['empresa-com.mail.protection.outlook.com'])?.unsupported?.includes('Microsoft') === true);
 
+// account.json escrito por PowerShell 5.1 con -Encoding UTF8 lleva BOM
+// aunque no se pida. JSON.parse normal lo rechaza; parseAccountJson debe
+// tolerarlo igual que un fichero sin BOM.
+const { parseAccountJson } = await import('./scripts/account-format.mjs');
+const objetivoBom = { EMAIL_ADDRESS: 'x@y.com' };
+check('parseAccountJson lee JSON con BOM', parseAccountJson(String.fromCharCode(0xFEFF) + JSON.stringify(objetivoBom)).EMAIL_ADDRESS === 'x@y.com');
+check('parseAccountJson lee JSON sin BOM', parseAccountJson(JSON.stringify(objetivoBom)).EMAIL_ADDRESS === 'x@y.com');
+
 child.kill();
 console.log('\n' + (failures === 0 ? 'TODO OK' : failures + ' fallo(s)'));
 process.exit(failures === 0 ? 0 : 1);

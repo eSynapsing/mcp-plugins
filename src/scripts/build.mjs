@@ -11,8 +11,9 @@
 // el repo llevan node_modules.
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -90,6 +91,7 @@ run(esb.cmd, [
 // El lanzador no se empaqueta: no tiene dependencias y busca el servidor al
 // lado (dist/server.mjs) o en el codigo fuente.
 copy(path.join(root, 'scripts', 'start.mjs'), path.join(dist, 'start.mjs'));
+copy(path.join(root, 'scripts', 'account-format.mjs'), path.join(dist, 'account-format.mjs'));
 
 const kb = (p) => Math.round(fs.statSync(p).size / 1024);
 log('    dist/server.mjs  ' + kb(path.join(dist, 'server.mjs')) + ' KB');
@@ -111,6 +113,139 @@ if (!String(test.stdout).includes('esynapsing-correu')) {
 }
 log('    Responde correctamente al handshake MCP.');
 
+// ---------- 2b. account.json con BOM: parseAccountJson lo debe tolerar ----------
+//
+// Windows PowerShell 5.1 escribe UTF-8 CON BOM aunque se pida -Encoding
+// UTF8. JSON.parse normal lo rechaza. Esta es la prueba unitaria mas rapida
+// de las cuatro: nada de procesos, solo la funcion pura.
+
+paso('2b', 'Comprobando que parseAccountJson tolera BOM...');
+{
+  const { parseAccountJson } = await import(
+    pathToFileURL(path.join(root, 'scripts', 'account-format.mjs')).href
+  );
+  const objetivo = { EMAIL_ADDRESS: 'x@y.com' };
+  const conBom = '\uFEFF' + JSON.stringify(objetivo);
+  const sinBom = JSON.stringify(objetivo);
+  const r1 = parseAccountJson(conBom);
+  const r2 = parseAccountJson(sinBom);
+  if (r1.EMAIL_ADDRESS !== 'x@y.com' || r2.EMAIL_ADDRESS !== 'x@y.com') {
+    throw new Error('parseAccountJson no interpreta correctamente el JSON con o sin BOM.');
+  }
+  log('    Lee igual con BOM y sin BOM.');
+}
+
+// ---------- 2c. Cifrado y descifrado DPAPI entre procesos distintos ----------
+//
+// Cifrar y descifrar en el MISMO proceso no habria detectado nunca el fallo
+// real (el modulo de PowerShell que no cargaba). Hay que cruzar procesos,
+// que es como lo usa de verdad configure-windows.ps1 (escribe) y start.mjs
+// (lee, mas tarde, en otro arranque).
+
+if (process.platform === 'win32') {
+  paso('2c', 'Comprobando DPAPI cifrando en un proceso y descifrando en otro...');
+  const dpapiScript = path.join(root, 'scripts', 'Dpapi.ps1');
+  const decryptScript = path.join(root, 'scripts', 'decrypt-password.ps1');
+  const secreto = 'clave-de-prueba-ñ-áéíóú-' + Date.now();
+
+  const cifrar = spawnSync('powershell.exe', [
+    '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command',
+    '. "' + dpapiScript + '"; Protect-Text ([Console]::In.ReadToEnd())',
+  ], { input: secreto, encoding: 'utf8', timeout: 20000 });
+  if (cifrar.status !== 0 || !cifrar.stdout.trim()) {
+    throw new Error('No se pudo cifrar con DPAPI durante el build.\n' + cifrar.stderr);
+  }
+  const cifradoB64 = cifrar.stdout.trim();
+
+  const tmpPwdFile = path.join(os.tmpdir(), 'escorreu-build-dpapi-' + process.pid + '.dpapi');
+  fs.writeFileSync(tmpPwdFile, cifradoB64, 'ascii');
+  const descifrar = spawnSync('powershell.exe', [
+    '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', decryptScript, '-PasswordFile', tmpPwdFile,
+  ], { encoding: 'utf8', timeout: 20000 });
+  fs.rmSync(tmpPwdFile, { force: true });
+
+  if (descifrar.status !== 0 || descifrar.stdout !== secreto) {
+    throw new Error(
+      'El roundtrip de DPAPI entre procesos distintos ha fallado. Cifrado en un proceso, '
+      + 'descifrado (decrypt-password.ps1) en otro, no ha devuelto el mismo texto.\n'
+      + 'Esperado: ' + JSON.stringify(secreto) + '\nObtenido: ' + JSON.stringify(descifrar.stdout) + '\n' + descifrar.stderr,
+    );
+  }
+  log('    Cifrado en un proceso, descifrado en otro: coincide.');
+}
+
+// ---------- 2d. Arranque real de start.mjs tal como queda publicado ----------
+//
+// Esta es la prueba que habria detectado el bug real: dist/start.mjs busca
+// decrypt-password.ps1 en ../scripts/ (un nivel por encima de dist/), y
+// account.json puede llegar con BOM. Se reconstruye aqui la misma forma que
+// tiene el paquete final -dist/ y scripts/ como hermanos- y se arranca de
+// verdad, sin atajos por variables de entorno.
+
+if (process.platform === 'win32') {
+  paso('2d', 'Comprobando el arranque real de start.mjs (paquete publicado)...');
+
+  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'escorreu-build-home-'));
+  const stateDir = path.join(fakeHome, '.esynapsing-correu');
+  fs.mkdirSync(stateDir, { recursive: true });
+
+  const dpapiScript = path.join(root, 'scripts', 'Dpapi.ps1');
+  const secreto = 'clave-de-prueba-del-build-' + Date.now();
+  const cifrar = spawnSync('powershell.exe', [
+    '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command',
+    '. "' + dpapiScript + '"; Protect-Text ([Console]::In.ReadToEnd())',
+  ], { input: secreto, encoding: 'utf8', timeout: 20000 });
+  if (cifrar.status !== 0 || !cifrar.stdout.trim()) {
+    throw new Error('No se pudo preparar la contrasena de prueba para el arranque real.\n' + cifrar.stderr);
+  }
+  fs.writeFileSync(path.join(stateDir, 'password.dpapi'), cifrar.stdout.trim(), 'ascii');
+
+  // Con BOM a proposito: es como lo escribe -Encoding UTF8 en PowerShell 5.1.
+  const cuentaPrueba = { EMAIL_ADDRESS: 'build-test@ejemplo.com', SENDER_NAME: 'Build Test' };
+  fs.writeFileSync(path.join(stateDir, 'account.json'), '\uFEFF' + JSON.stringify(cuentaPrueba, null, 2), 'utf8');
+
+  // dist/ y scripts/ como hermanos bajo la misma raiz, igual que en el
+  // paquete final (build.mjs los junta ahi mas abajo, en el paso 3).
+  const fakePluginRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'escorreu-build-plugin-'));
+  copy(dist, path.join(fakePluginRoot, 'dist'));
+  copy(path.join(root, 'scripts'), path.join(fakePluginRoot, 'scripts'));
+  fs.rmSync(path.join(fakePluginRoot, 'scripts', 'build.mjs'), { force: true });
+
+  const arranque = spawnSync(process.execPath, [path.join(fakePluginRoot, 'dist', 'start.mjs')], {
+    input: [
+      JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'build', version: '1' } } }),
+      JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }),
+      JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'verify_email_setup', arguments: {} } }),
+    ].join('\n') + '\n',
+    encoding: 'utf8',
+    timeout: 25000,
+    env: { ...process.env, USERPROFILE: fakeHome },
+  });
+
+  const salida = String(arranque.stdout);
+  const stderr = String(arranque.stderr);
+
+  if (!salida.includes('esynapsing-correu')) {
+    throw new Error('start.mjs (paquete publicado) no responde al handshake MCP.\n' + stderr);
+  }
+  if (stderr.includes('No se pudo descifrar la contrasena guardada')) {
+    throw new Error(
+      'start.mjs no ha encontrado o no ha podido ejecutar decrypt-password.ps1 desde su ubicacion '
+      + 'publicada (dist/../scripts/). Salida de error:\n' + stderr,
+    );
+  }
+  if (!salida.includes('build-test@ejemplo.com')) {
+    throw new Error(
+      'El conector arrancado desde el paquete publicado no ha recogido el EMAIL_ADDRESS de un '
+      + 'account.json con BOM. Salida:\n' + salida.slice(0, 2000),
+    );
+  }
+  log('    Encuentra decrypt-password.ps1 en ../scripts/ y lee account.json con BOM.');
+
+  rmrf(fakeHome);
+  rmrf(fakePluginRoot);
+}
+
 // ---------- 3. Preparar el contenido comun ----------
 
 paso(3, 'Preparando el paquete...');
@@ -126,6 +261,7 @@ for (const item of ['dist', 'skills', 'scripts', 'assets', '.codex-plugin', '.mc
 // falta ni el build ni el lanzador suelto (va copiado en dist/).
 rmrf(path.join(staging, 'scripts', 'build.mjs'));
 rmrf(path.join(staging, 'scripts', 'start.mjs'));
+rmrf(path.join(staging, 'scripts', 'account-format.mjs'));
 
 // En el paquete compilado el lanzador vive en dist/, junto al servidor. Si el
 // .mcp.json siguiera apuntando a scripts/start.mjs, no encontraria nada.
@@ -217,6 +353,25 @@ const marketplaceClaude = {
 // El .mcpb tambien va al repo, para quien use Claude Desktop.
 copy(mcpb, path.join(market, 'claude-desktop', path.basename(mcpb)));
 copy(path.join(root, 'MARKETPLACE.md'), path.join(market, 'README.md'));
+
+// Los tres ficheros de los que depende el arranque real en Codex tienen que
+// estar todos en el plugin que se publica, y en el sitio correcto. Si falta
+// alguno, mejor que el build falle aqui a que falle en silencio en casa del
+// cliente.
+{
+  const requeridos = [
+    path.join(pluginDir, 'dist', 'start.mjs'),
+    path.join(pluginDir, 'dist', 'account-format.mjs'),
+    path.join(pluginDir, 'scripts', 'decrypt-password.ps1'),
+    path.join(pluginDir, 'scripts', 'Dpapi.ps1'),
+    path.join(pluginDir, 'scripts', 'configure-windows.ps1'),
+  ];
+  const faltan = requeridos.filter((f) => !fs.existsSync(f));
+  if (faltan.length) {
+    throw new Error('Faltan ficheros en el plugin publicado:\n' + faltan.join('\n'));
+  }
+  log('    Presentes: decrypt-password.ps1, Dpapi.ps1, configure-windows.ps1, start.mjs, account-format.mjs.');
+}
 
 rmrf(staging);
 

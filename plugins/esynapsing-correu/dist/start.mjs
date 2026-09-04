@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { parseAccountJson } from './account-format.mjs';
 
 const stateDir = path.join(os.homedir(), '.esynapsing-correu');
 const accountFile = path.join(stateDir, 'account.json');
@@ -24,7 +25,7 @@ const passwordFile = path.join(stateDir, 'password.dpapi');
 
 // Rellenamos solo lo que falte: lo que ya venga por entorno manda siempre.
 try {
-  const parsed = JSON.parse(fs.readFileSync(accountFile, 'utf8'));
+  const parsed = parseAccountJson(fs.readFileSync(accountFile, 'utf8'));
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
     for (const [key, value] of Object.entries(parsed)) {
       if (!process.env[key] && value !== undefined && value !== null && value !== '') {
@@ -32,16 +33,28 @@ try {
       }
     }
   }
-} catch {
-  // No hay configuracion local: normal en Claude Desktop y en la primera
-  // ejecucion. El servidor ya avisa si le faltan datos.
+} catch (error) {
+  if (error && error.code === 'ENOENT') {
+    // No hay configuracion local: normal en Claude Desktop y en la primera
+    // ejecucion. El servidor ya avisa si le faltan datos.
+  } else {
+    // El fichero existe pero no se ha podido leer o interpretar. Antes esto
+    // se tragaba en silencio y el conector se quedaba sin datos sin que se
+    // viera por que. Lo dejamos en el log de la extension, para diagnostico.
+    process.stderr.write('[esynapsing-correu] No se pudo leer ' + accountFile + ': ' + error.message + '\n');
+  }
 }
 
 // La contrasena esta cifrada con DPAPI y solo la puede descifrar este usuario
 // de Windows. Solo lo intentamos si no venia ya por entorno.
 if (!process.env.EMAIL_PASSWORD && process.platform === 'win32' && fs.existsSync(passwordFile)) {
   try {
-    const decryptScript = path.join(import.meta.dirname, 'decrypt-password.ps1');
+    // decrypt-password.ps1 vive junto a start.mjs en el arbol fuente, pero en
+    // el paquete publicado start.mjs se copia a dist/ mientras que el script
+    // se queda en scripts/, un nivel por encima. Subir un nivel y volver a
+    // entrar en 'scripts' resuelve bien en los dos layouts: en el fuente
+    // (scripts/../scripts/ = la misma carpeta) y en el paquete (dist/../scripts/).
+    const decryptScript = path.join(import.meta.dirname, '..', 'scripts', 'decrypt-password.ps1');
     const result = spawnSync(
       'powershell.exe',
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', decryptScript, '-PasswordFile', passwordFile],

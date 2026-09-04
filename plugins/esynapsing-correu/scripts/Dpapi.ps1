@@ -96,3 +96,15 @@ function ConvertFrom-SecureStringPlain {
         [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
     }
 }
+
+# Windows PowerShell 5.1 (powershell.exe) escribe UTF-8 CON BOM aunque se pida
+# "-Encoding UTF8" en Set-Content: no hay forma de evitarlo con ese cmdlet.
+# Node no quita el BOM al leer, y JSON.parse lo rechaza, asi que account.json
+# se quedaba sin poder leerse y el conector arrancaba sin correo ni
+# contrasena, en silencio. Escribimos con .NET directamente, que si permite
+# UTF-8 sin BOM.
+function Set-Utf8NoBom {
+    param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][string]$Content)
+    $sinBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Content, $sinBom)
+}

@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "esynapsing-correu",
   "display_name": "eSynapsing Correu",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Envia, lee y busca correo en tu propia cuenta (SMTP/IMAP), sin Google ni Microsoft.",
   "long_description": "Conecta Claude con el buzón de correo de tu empresa mediante SMTP e IMAP estándar. Sirve para cualquier proveedor: IONOS, OVH, Strato, Hostinger, Zoho, Gmail con contraseña de aplicación o cualquier alojamiento con cPanel.\n\nLos correos salen desde tu dirección real y se guarda una copia en tu carpeta de Enviados, igual que si los hubieras escrito tú. La contraseña se guarda en el almacén seguro del sistema operativo, nunca en un archivo de texto.\n\nIncluye límites de seguridad configurables: lista de dominios de destinatarios permitidos, número máximo de destinatarios por correo, máximo de correos al día y una carpeta autorizada para los adjuntos. Todos los envíos quedan registrados en un archivo local de auditoría.",
   "author": {

@@ -120,7 +120,10 @@ $habiaContrasena = Test-Path $passwordFile
 # sin depender de $script:, que con dot-sourcing no siempre apunta a la misma
 # variable que el nivel superior del script (se detecto probando el script:
 # la funcion decia "contrasena actualizada" pero Guardar no la escribia).
-$estado = @{ NuevaContrasenaB64 = $null }   # $null = no tocar la contrasena guardada
+$estado = @{
+    NuevaContrasenaB64 = $null       # $null = no tocar la contrasena guardada
+    PlainParaVerificar = $null       # copia temporal solo para comprobar el cifrado; se borra tras Guardar
+}
 
 # ---------- secciones ----------
 
@@ -141,6 +144,9 @@ function Editar-CorreoYContrasena {
             Write-Host '  La contrasena no puede estar vacia. No se ha cambiado.' -ForegroundColor Yellow
         } else {
             $estado.NuevaContrasenaB64 = Protect-Text $plain
+            # Guardamos una copia en claro solo para que Guardar la pueda
+            # comparar tras descifrar de verdad. Se borra en cuanto se usa.
+            $estado.PlainParaVerificar = $plain
             Write-Host '  Contrasena actualizada (se guardara al confirmar).' -ForegroundColor Green
         }
         $plain = $null
@@ -180,13 +186,46 @@ function Guardar {
     if (-not $cuenta['EMAIL_ADDRESS']) { throw 'Falta la direccion de correo. Ve a la opcion 1 antes de guardar.' }
     if (-not $habiaContrasena -and -not $estado.NuevaContrasenaB64) { throw 'Falta la contrasena. Ve a la opcion 1 antes de guardar.' }
 
-    $cuenta | ConvertTo-Json | Set-Content -LiteralPath $accountFile -Encoding UTF8
+    # UTF-8 sin BOM: si se escribe con Set-Content -Encoding UTF8 (que en este
+    # PowerShell SIEMPRE anade BOM), Node no puede leer el fichero despues.
+    Set-Utf8NoBom -Path $accountFile -Content ($cuenta | ConvertTo-Json)
+
     if ($estado.NuevaContrasenaB64) {
         Set-Content -LiteralPath $passwordFile -Value $estado.NuevaContrasenaB64 -Encoding ASCII
+
+        # Comprobacion real: descifrar desde un PROCESO NUEVO, exactamente
+        # como hara start.mjs cada vez que arranque el conector. Si esto
+        # falla, es mejor saberlo ahora que descubrir despues que el conector
+        # nunca arranca. Puede fallar si DPAPI no se comporta igual entre
+        # sesiones en este equipo (por ejemplo, sesiones de escritorio remoto).
+        $decryptScript = Join-Path $PSScriptRoot 'decrypt-password.ps1'
+        $descifrado = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $decryptScript -PasswordFile $passwordFile 2>$null
+        $funciono = ($LASTEXITCODE -eq 0) -and ($descifrado -eq $estado.PlainParaVerificar)
+        $estado.PlainParaVerificar = $null
+
+        if (-not $funciono) {
+            throw (
+                'La contrasena se ha cifrado pero no se ha podido volver a leer correctamente ' +
+                'desde un proceso nuevo (asi es como la lee el conector cada vez que arranca). ' +
+                'No se ha guardado como buena. Vuelve a intentarlo; si se repite, puede ser que ' +
+                'DPAPI no funcione igual entre sesiones en este equipo (por ejemplo, en una sesion ' +
+                'de escritorio remoto o una tarea programada sin sesion interactiva).'
+            )
+        }
+    }
+
+    # Tambien comprobamos que lo que acabamos de escribir se puede releer,
+    # para detectar aqui cualquier problema de formato en vez de que aparezca
+    # despues, en el arranque del conector.
+    try {
+        $releido = Get-Content -LiteralPath $accountFile -Raw | ConvertFrom-Json
+        if ($releido.EMAIL_ADDRESS -ne $cuenta['EMAIL_ADDRESS']) { throw 'no coincide' }
+    } catch {
+        throw 'El fichero de configuracion se ha guardado pero no se ha podido releer correctamente. Vuelve a intentarlo.'
     }
 
     Write-Host ''
-    Write-Host '  Configuracion guardada.' -ForegroundColor Green
+    Write-Host '  Configuracion guardada y verificada.' -ForegroundColor Green
     Write-Host ('  Cuenta: ' + $cuenta['EMAIL_ADDRESS'])
     Write-Host ('  SMTP:   ' + $(if ($cuenta['SMTP_HOST']) { $cuenta['SMTP_HOST'] + ':' + $cuenta['SMTP_PORT'] } else { 'automatico' }))
     Write-Host ('  IMAP:   ' + $(if ($cuenta['IMAP_HOST']) { $cuenta['IMAP_HOST'] + ':' + $cuenta['IMAP_PORT'] } else { 'automatico' }))
