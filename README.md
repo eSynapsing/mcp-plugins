@@ -5,14 +5,18 @@ ChatGPT y Claude Code. Contiene también el paquete para Claude Desktop.
 
 ## eSynapsing Correu
 
-Envía, lee y busca correo en un buzón SMTP/IMAP propio, sin depender de los
-conectores de Google ni de Microsoft. Para empresas cuyo correo es IMAP
-estándar: IONOS, OVH, Strato, Hostinger, Zoho, alojamientos con cPanel, y
-también Gmail con contraseña de aplicación.
+Envía, lee y busca correo en uno o varios buzones SMTP/IMAP propios, sin
+depender de los conectores de Google ni de Microsoft. Para empresas cuyo
+correo es IMAP estándar: IONOS, OVH, Strato, Hostinger, Zoho, alojamientos
+con cPanel, y también Gmail con contraseña de aplicación.
 
-Ocho herramientas: verificar la configuración, enviar, listar enviados,
-auditar el registro local, listar carpetas, listar la bandeja de entrada,
-buscar y leer un correo concreto.
+Admite varias cuentas a la vez (hasta 3 en el formulario de Claude Desktop,
+sin límite práctico por script en Codex): si hay más de una configurada,
+Claude pregunta con cuál quieres enviar o leer antes de hacerlo.
+
+Nueve herramientas: listar las cuentas configuradas, verificar la
+configuración, enviar, listar enviados, auditar el registro local, listar
+carpetas, listar la bandeja de entrada, buscar y leer un correo concreto.
 
 ## Instalación
 

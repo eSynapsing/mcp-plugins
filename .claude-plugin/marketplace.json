@@ -11,7 +11,7 @@
       "name": "esynapsing-correu",
       "source": "./plugins/esynapsing-correu",
       "description": "Envia, lee y busca correo en un buzon SMTP/IMAP propio, sin depender de Google ni Microsoft.",
-      "version": "1.3.4",
+      "version": "1.4.0",
       "author": {
         "name": "eSynapsing",
         "email": "info@esynapsing.com"

@@ -5,11 +5,17 @@ description: Preparar, verificar, enviar y revisar correo mediante el servidor S
 
 # Correo SMTP/IMAP
 
-Usa las herramientas de eSynapsing Correu para trabajar con la cuenta configurada en el equipo del usuario.
+Usa las herramientas de eSynapsing Correu para trabajar con la cuenta o cuentas de correo configuradas en el equipo del usuario. Puede haber una o varias.
+
+## Varias cuentas configuradas
+
+Antes de `send_email`, `list_inbox`, `search_email`, `read_email` o `list_mail_folders`, si no sabes con qué cuenta trabajar llama primero a `list_email_profiles`. Si solo hay una, úsala sin preguntar. **Si hay más de una, pregunta al usuario con cuál quiere trabajar** (por nombre o por correo) antes de llamar a la herramienta — no asumas la primera ni la más reciente. Pásala en el parámetro `profile` con el nombre exacto o el correo que haya devuelto `list_email_profiles`.
+
+`verify_email_setup` sin indicar `profile` comprueba todas las cuentas a la vez si hay más de una, así que no hace falta preguntar antes de usarla.
 
 ## Abrir la configuración del correo
 
-Si el usuario pide configurar, cambiar o revisar su correo (la primera vez o cualquier otra), o si `verify_email_setup` dice que faltan datos, **no le pidas nada en el chat, ni siquiera el correo**. Abre el configurador en su propia ventana, donde responde él directamente:
+Si el usuario pide configurar, cambiar, añadir o revisar cuentas de correo (la primera vez o cualquier otra), o si `verify_email_setup` dice que faltan datos, **no le pidas nada en el chat, ni siquiera el correo**. Abre el configurador en su propia ventana, donde responde él directamente:
 
 ```powershell
 $rutas = @(
@@ -20,17 +26,17 @@ $cfg = Get-ChildItem -Path $rutas -ErrorAction SilentlyContinue | Sort-Object La
 Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',$cfg.FullName
 ```
 
-Busca en las dos ubicaciones posibles (Codex y Claude instalan el plugin en carpetas distintas) y usa la que exista; si el plugin está instalado en los dos, coge la más reciente. Es reentrable: si ya hay una cuenta guardada, se abre un menú (correo y contraseña / servidor SMTP / servidor IMAP) para tocar solo lo que haga falta, sin repetir el resto ni volver a pedir la contraseña si no se quiere cambiar. Si no hay nada guardado, hace esas mismas tres preguntas seguidas. Se puede volver a abrir tantas veces como se quiera, siempre que el usuario lo pida en el chat — por ejemplo "abre la configuración del correo" o "cambia el servidor IMAP".
+Busca en las dos ubicaciones posibles (Codex y Claude instalan el plugin en carpetas distintas) y usa la que exista; si el plugin está instalado en los dos, coge la más reciente. Es reentrable y admite varias cuentas: si ya hay alguna guardada, se abre un menú para añadir una cuenta nueva, editar o borrar una existente, cambiar cuál es la principal, o tocar el servidor SMTP/IMAP de una en concreto — sin repetir el resto ni volver a pedir una contraseña que no se quiere cambiar. Si no hay nada guardado, pide los datos de la primera cuenta seguidos. Se puede volver a abrir tantas veces como se quiera, siempre que el usuario lo pida en el chat — por ejemplo "abre la configuración del correo", "añade otra cuenta de correo" o "cambia el servidor IMAP de la cuenta de facturación".
 
 Después de guardar, dile al usuario que cierre el cliente por completo y lo vuelva a abrir, porque la configuración se lee al arrancar.
 
-En Claude Desktop esto no aplica: allí la configuración se rellena en el formulario de la extensión.
+En Claude Desktop esto no aplica: allí la configuración se rellena en el formulario de la extensión, que admite hasta 3 cuentas (Ajustes → Extensiones → eSynapsing Correu → Configurar).
 
 ## Seguridad y autorización
 
 - Nunca pidas ni aceptes contraseñas del buzón dentro de la conversación. Si falta configuración, abre el configurador (sección de arriba): pide la contraseña por teclado en su propia ventana, y así no pasa por el chat.
-- Antes de llamar a `send_email`, muestra al usuario los destinatarios, el asunto, el cuerpo final y los adjuntos, y solicita una confirmación inequívoca. Una petición anterior de redactar o preparar no autoriza el envío.
-- Una confirmación solo sirve para la versión exacta mostrada. Si cambia cualquier destinatario, asunto, cuerpo o adjunto, vuelve a pedir confirmación.
+- Antes de llamar a `send_email`, muestra al usuario la cuenta remitente (si hay varias configuradas), los destinatarios, el asunto, el cuerpo final y los adjuntos, y solicita una confirmación inequívoca. Una petición anterior de redactar o preparar no autoriza el envío.
+- Una confirmación solo sirve para la versión exacta mostrada. Si cambia cualquier destinatario, asunto, cuerpo, adjunto o la cuenta remitente, vuelve a pedir confirmación.
 - No dividas un envío en varios mensajes para eludir límites de destinatarios, dominios o cuota diaria.
 - Si el usuario informa de un fallo de correo, llama primero a `verify_email_setup`. No pruebes envíos reales como diagnóstico.
 

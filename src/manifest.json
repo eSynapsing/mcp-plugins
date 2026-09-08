@@ -2,9 +2,9 @@
   "manifest_version": "0.3",
   "name": "esynapsing-correu",
   "display_name": "eSynapsing Correu",
-  "version": "1.3.4",
-  "description": "Envia, lee y busca correo en tu propia cuenta (SMTP/IMAP), sin Google ni Microsoft.",
-  "long_description": "Conecta Claude con el buzón de correo de tu empresa mediante SMTP e IMAP estándar. Sirve para cualquier proveedor: IONOS, OVH, Strato, Hostinger, Zoho, Gmail con contraseña de aplicación o cualquier alojamiento con cPanel.\n\nLos correos salen desde tu dirección real y se guarda una copia en tu carpeta de Enviados, igual que si los hubieras escrito tú. La contraseña se guarda en el almacén seguro del sistema operativo, nunca en un archivo de texto.\n\nIncluye límites de seguridad configurables: lista de dominios de destinatarios permitidos, número máximo de destinatarios por correo, máximo de correos al día y una carpeta autorizada para los adjuntos. Todos los envíos quedan registrados en un archivo local de auditoría.",
+  "version": "1.4.0",
+  "description": "Envia, lee y busca correo en tu propia cuenta o cuentas (SMTP/IMAP), sin Google ni Microsoft.",
+  "long_description": "Conecta Claude con el buzón (o los buzones) de correo de tu empresa mediante SMTP e IMAP estándar. Sirve para cualquier proveedor: IONOS, OVH, Strato, Hostinger, Zoho, Gmail con contraseña de aplicación o cualquier alojamiento con cPanel.\n\nAdmite hasta 3 cuentas a la vez: si configuras más de una, Claude te preguntará con cuál quieres enviar o leer cada vez. Los correos salen desde la dirección real de esa cuenta y se guarda una copia en su carpeta de Enviados, igual que si los hubieras escrito tú. Las contraseñas se guardan en el almacén seguro del sistema operativo, nunca en un archivo de texto.\n\nIncluye límites de seguridad configurables (compartidos entre todas las cuentas): lista de dominios de destinatarios permitidos, número máximo de destinatarios por correo, máximo de correos al día y una carpeta autorizada para los adjuntos. Todos los envíos quedan registrados en un archivo local de auditoría.",
   "author": {
     "name": "eSynapsing",
     "email": "info@esynapsing.com"
@@ -16,7 +16,8 @@
     "smtp",
     "imap",
     "ionos",
-    "eSynapsing"
+    "eSynapsing",
+    "multicuenta"
   ],
   "license": "MIT",
   "server": {
@@ -28,14 +29,33 @@
         "${__dirname}/server/index.js"
       ],
       "env": {
-        "EMAIL_ADDRESS": "${user_config.email_address}",
-        "EMAIL_PASSWORD": "${user_config.password}",
-        "EMAIL_PROVIDER": "${user_config.provider}",
-        "SENDER_NAME": "${user_config.sender_name}",
-        "SMTP_HOST": "${user_config.smtp_host}",
-        "SMTP_PORT": "${user_config.smtp_port}",
-        "IMAP_HOST": "${user_config.imap_host}",
-        "IMAP_PORT": "${user_config.imap_port}",
+        "ACCOUNT1_LABEL": "${user_config.account1_label}",
+        "ACCOUNT1_EMAIL": "${user_config.account1_email}",
+        "ACCOUNT1_PASSWORD": "${user_config.account1_password}",
+        "ACCOUNT1_SENDER_NAME": "${user_config.account1_sender_name}",
+        "ACCOUNT1_PROVIDER": "${user_config.account1_provider}",
+        "ACCOUNT1_SMTP_HOST": "${user_config.account1_smtp_host}",
+        "ACCOUNT1_SMTP_PORT": "${user_config.account1_smtp_port}",
+        "ACCOUNT1_IMAP_HOST": "${user_config.account1_imap_host}",
+        "ACCOUNT1_IMAP_PORT": "${user_config.account1_imap_port}",
+        "ACCOUNT2_LABEL": "${user_config.account2_label}",
+        "ACCOUNT2_EMAIL": "${user_config.account2_email}",
+        "ACCOUNT2_PASSWORD": "${user_config.account2_password}",
+        "ACCOUNT2_SENDER_NAME": "${user_config.account2_sender_name}",
+        "ACCOUNT2_PROVIDER": "${user_config.account2_provider}",
+        "ACCOUNT2_SMTP_HOST": "${user_config.account2_smtp_host}",
+        "ACCOUNT2_SMTP_PORT": "${user_config.account2_smtp_port}",
+        "ACCOUNT2_IMAP_HOST": "${user_config.account2_imap_host}",
+        "ACCOUNT2_IMAP_PORT": "${user_config.account2_imap_port}",
+        "ACCOUNT3_LABEL": "${user_config.account3_label}",
+        "ACCOUNT3_EMAIL": "${user_config.account3_email}",
+        "ACCOUNT3_PASSWORD": "${user_config.account3_password}",
+        "ACCOUNT3_SENDER_NAME": "${user_config.account3_sender_name}",
+        "ACCOUNT3_PROVIDER": "${user_config.account3_provider}",
+        "ACCOUNT3_SMTP_HOST": "${user_config.account3_smtp_host}",
+        "ACCOUNT3_SMTP_PORT": "${user_config.account3_smtp_port}",
+        "ACCOUNT3_IMAP_HOST": "${user_config.account3_imap_host}",
+        "ACCOUNT3_IMAP_PORT": "${user_config.account3_imap_port}",
         "SAVE_TO_SENT": "${user_config.save_to_sent}",
         "ALLOWED_RECIPIENT_DOMAINS": "${user_config.allowed_recipient_domains}",
         "MAX_RECIPIENTS_PER_EMAIL": "${user_config.max_recipients_per_email}",
@@ -49,90 +69,224 @@
   },
   "tools": [
     {
+      "name": "list_email_profiles",
+      "description": "Lista las cuentas de correo configuradas."
+    },
+    {
       "name": "verify_email_setup",
       "description": "Comprueba la conexión con el servidor de correo y detecta automáticamente la configuración si no se conoce."
     },
     {
       "name": "send_email",
-      "description": "Envía un correo desde la cuenta configurada, con copia en la carpeta de Enviados."
+      "description": "Envía un correo desde una de las cuentas configuradas, con copia en la carpeta de Enviados."
     },
     {
       "name": "list_recent_sent",
-      "description": "Lista los últimos correos de la carpeta de Enviados del buzón."
+      "description": "Lista los últimos correos de la carpeta de Enviados de una cuenta."
     },
     {
       "name": "email_send_log",
-      "description": "Muestra el registro local de envíos, incluidos fallos y bloqueos."
+      "description": "Muestra el registro local de envíos de todas las cuentas, incluidos fallos y bloqueos."
     },
     {
       "name": "list_mail_folders",
-      "description": "Lista las carpetas del buzón e indica cuáles están autorizadas para lectura."
+      "description": "Lista las carpetas del buzón de una cuenta e indica cuáles están autorizadas para lectura."
     },
     {
       "name": "list_inbox",
-      "description": "Lista los correos de una carpeta sin descargar su contenido."
+      "description": "Lista los correos de una carpeta de una cuenta sin descargar su contenido."
     },
     {
       "name": "search_email",
-      "description": "Busca correos por remitente, destinatario, asunto, texto o fechas."
+      "description": "Busca correos de una cuenta por remitente, destinatario, asunto, texto o fechas."
     },
     {
       "name": "read_email",
-      "description": "Lee el contenido de un correo concreto, en modo solo lectura."
+      "description": "Lee el contenido de un correo concreto de una cuenta, en modo solo lectura."
     }
   ],
   "tools_generated": false,
   "user_config": {
-    "email_address": {
+    "account1_label": {
       "type": "string",
-      "title": "Dirección de correo",
+      "title": "Cuenta 1 — Nombre para identificarla",
+      "description": "Como la llamará Claude cuando pregunte con cuál enviar. Por ejemplo: Trabajo. Si lo dejas vacío se usará el correo.",
+      "required": false
+    },
+    "account1_email": {
+      "type": "string",
+      "title": "Cuenta 1 — Dirección de correo",
       "description": "La dirección desde la que se enviarán los correos. Por ejemplo: info@tuempresa.com",
       "required": true
     },
-    "password": {
+    "account1_password": {
       "type": "string",
-      "title": "Contraseña del correo",
+      "title": "Cuenta 1 — Contraseña",
       "description": "La contraseña del buzón. Si la cuenta es de Gmail o tiene verificación en dos pasos, hay que usar una contraseña de aplicación, no la habitual. Se guarda en el almacén seguro del sistema, no en ningún archivo.",
       "sensitive": true,
       "required": true
     },
-    "sender_name": {
+    "account1_sender_name": {
       "type": "string",
-      "title": "Nombre del remitente",
+      "title": "Cuenta 1 — Nombre del remitente",
       "description": "El nombre que verá quien reciba el correo. Por ejemplo: Joana Teixidor — eSynapsing",
       "required": false
     },
-    "provider": {
+    "account1_provider": {
       "type": "string",
-      "title": "Proveedor de correo",
+      "title": "Cuenta 1 — Proveedor de correo",
       "description": "Déjalo en 'auto' y la extensión detectará sola el servidor la primera vez que le pidas verificar la configuración. Si prefieres fijarlo, escribe uno de estos: ionos-es, ionos-com, ionos-de, ovh, strato, hostinger, zoho-eu, zoho-com, gmail, cpanel, manual",
       "default": "auto",
       "required": false
     },
-    "smtp_host": {
+    "account1_smtp_host": {
       "type": "string",
-      "title": "Servidor SMTP (opcional)",
+      "title": "Cuenta 1 — Servidor SMTP (opcional)",
       "description": "Solo si tu proveedor no está en la lista o la detección automática falla. Por ejemplo: smtp.tuempresa.com",
       "required": false
     },
-    "smtp_port": {
+    "account1_smtp_port": {
       "type": "number",
-      "title": "Puerto SMTP (opcional)",
+      "title": "Cuenta 1 — Puerto SMTP (opcional)",
       "description": "465 para conexión segura directa (lo habitual) o 587 si tu proveedor usa STARTTLS.",
       "default": 465,
       "min": 1,
       "max": 65535,
       "required": false
     },
-    "imap_host": {
+    "account1_imap_host": {
       "type": "string",
-      "title": "Servidor IMAP (opcional)",
+      "title": "Cuenta 1 — Servidor IMAP (opcional)",
       "description": "Necesario solo para guardar copia en la carpeta de Enviados. Por ejemplo: imap.tuempresa.com",
       "required": false
     },
-    "imap_port": {
+    "account1_imap_port": {
       "type": "number",
-      "title": "Puerto IMAP (opcional)",
+      "title": "Cuenta 1 — Puerto IMAP (opcional)",
+      "description": "993 en prácticamente todos los proveedores.",
+      "default": 993,
+      "min": 1,
+      "max": 65535,
+      "required": false
+    },
+    "account2_label": {
+      "type": "string",
+      "title": "Cuenta 2 (opcional) — Nombre para identificarla",
+      "description": "Deja vacío el correo de la cuenta 2 si solo usas una cuenta.",
+      "required": false
+    },
+    "account2_email": {
+      "type": "string",
+      "title": "Cuenta 2 (opcional) — Dirección de correo",
+      "description": "Déjalo vacío si no quieres una segunda cuenta.",
+      "required": false
+    },
+    "account2_password": {
+      "type": "string",
+      "title": "Cuenta 2 (opcional) — Contraseña",
+      "description": "Obligatoria solo si rellenas la cuenta 2.",
+      "sensitive": true,
+      "required": false
+    },
+    "account2_sender_name": {
+      "type": "string",
+      "title": "Cuenta 2 — Nombre del remitente",
+      "description": "El nombre que verá quien reciba el correo de esta cuenta.",
+      "required": false
+    },
+    "account2_provider": {
+      "type": "string",
+      "title": "Cuenta 2 — Proveedor de correo",
+      "description": "Déjalo en 'auto' y la extensión detectará sola el servidor. Ver la lista de valores en la cuenta 1.",
+      "default": "auto",
+      "required": false
+    },
+    "account2_smtp_host": {
+      "type": "string",
+      "title": "Cuenta 2 — Servidor SMTP (opcional)",
+      "description": "Solo si la detección automática de esta cuenta falla.",
+      "required": false
+    },
+    "account2_smtp_port": {
+      "type": "number",
+      "title": "Cuenta 2 — Puerto SMTP (opcional)",
+      "description": "465 para conexión segura directa (lo habitual) o 587 si tu proveedor usa STARTTLS.",
+      "default": 465,
+      "min": 1,
+      "max": 65535,
+      "required": false
+    },
+    "account2_imap_host": {
+      "type": "string",
+      "title": "Cuenta 2 — Servidor IMAP (opcional)",
+      "description": "Necesario solo para guardar copia en la carpeta de Enviados de esta cuenta.",
+      "required": false
+    },
+    "account2_imap_port": {
+      "type": "number",
+      "title": "Cuenta 2 — Puerto IMAP (opcional)",
+      "description": "993 en prácticamente todos los proveedores.",
+      "default": 993,
+      "min": 1,
+      "max": 65535,
+      "required": false
+    },
+    "account3_label": {
+      "type": "string",
+      "title": "Cuenta 3 (opcional) — Nombre para identificarla",
+      "description": "Deja vacío el correo de la cuenta 3 si no hace falta.",
+      "required": false
+    },
+    "account3_email": {
+      "type": "string",
+      "title": "Cuenta 3 (opcional) — Dirección de correo",
+      "description": "Déjalo vacío si no quieres una tercera cuenta.",
+      "required": false
+    },
+    "account3_password": {
+      "type": "string",
+      "title": "Cuenta 3 (opcional) — Contraseña",
+      "description": "Obligatoria solo si rellenas la cuenta 3.",
+      "sensitive": true,
+      "required": false
+    },
+    "account3_sender_name": {
+      "type": "string",
+      "title": "Cuenta 3 — Nombre del remitente",
+      "description": "El nombre que verá quien reciba el correo de esta cuenta.",
+      "required": false
+    },
+    "account3_provider": {
+      "type": "string",
+      "title": "Cuenta 3 — Proveedor de correo",
+      "description": "Déjalo en 'auto' y la extensión detectará sola el servidor. Ver la lista de valores en la cuenta 1.",
+      "default": "auto",
+      "required": false
+    },
+    "account3_smtp_host": {
+      "type": "string",
+      "title": "Cuenta 3 — Servidor SMTP (opcional)",
+      "description": "Solo si la detección automática de esta cuenta falla.",
+      "required": false
+    },
+    "account3_smtp_port": {
+      "type": "number",
+      "title": "Cuenta 3 — Puerto SMTP (opcional)",
+      "description": "465 para conexión segura directa (lo habitual) o 587 si tu proveedor usa STARTTLS.",
+      "default": 465,
+      "min": 1,
+      "max": 65535,
+      "required": false
+    },
+    "account3_imap_host": {
+      "type": "string",
+      "title": "Cuenta 3 — Servidor IMAP (opcional)",
+      "description": "Necesario solo para guardar copia en la carpeta de Enviados de esta cuenta.",
+      "required": false
+    },
+    "account3_imap_port": {
+      "type": "number",
+      "title": "Cuenta 3 — Puerto IMAP (opcional)",
       "description": "993 en prácticamente todos los proveedores.",
       "default": 993,
       "min": 1,
@@ -142,14 +296,14 @@
     "save_to_sent": {
       "type": "boolean",
       "title": "Guardar copia en Enviados",
-      "description": "Deja una copia de cada correo en la carpeta de Enviados del buzón, para que aparezca también en Outlook, el móvil o el webmail.",
+      "description": "Deja una copia de cada correo en la carpeta de Enviados del buzón correspondiente, para que aparezca también en Outlook, el móvil o el webmail.",
       "default": true,
       "required": false
     },
     "allowed_recipient_domains": {
       "type": "string",
       "title": "Dominios de destinatarios permitidos",
-      "description": "Medida de seguridad recomendada. Lista separada por comas de los únicos dominios a los que se podrá escribir, por ejemplo: tuempresa.com, clientehabitual.es. Si lo dejas vacío se podrá escribir a cualquier dirección.",
+      "description": "Medida de seguridad recomendada, compartida por todas las cuentas. Lista separada por comas de los únicos dominios a los que se podrá escribir, por ejemplo: tuempresa.com, clientehabitual.es. Si lo dejas vacío se podrá escribir a cualquier dirección.",
       "required": false
     },
     "max_recipients_per_email": {
@@ -163,8 +317,8 @@
     },
     "max_emails_per_day": {
       "type": "number",
-      "title": "Máximo de correos al día",
-      "description": "Freno de seguridad. Si se alcanza, la extensión deja de enviar hasta el día siguiente.",
+      "title": "Máximo de correos al día (todas las cuentas juntas)",
+      "description": "Freno de seguridad compartido: cuenta los envíos de todas las cuentas configuradas. Si se alcanza, la extensión deja de enviar hasta el día siguiente.",
       "default": 20,
       "min": 1,
       "max": 500,
@@ -179,7 +333,7 @@
     "signature_html": {
       "type": "string",
       "title": "Firma (HTML, opcional)",
-      "description": "Se añade al final de los correos. Admite HTML sencillo, por ejemplo: <strong>Joana Teixidor</strong><br>eSynapsing<br>www.esynapsing.com",
+      "description": "Se añade al final de los correos de todas las cuentas. Admite HTML sencillo, por ejemplo: <strong>Joana Teixidor</strong><br>eSynapsing<br>www.esynapsing.com",
       "required": false
     },
     "readable_folders": {

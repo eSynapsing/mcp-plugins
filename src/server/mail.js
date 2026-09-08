@@ -212,13 +212,13 @@ export async function sendEmail(cfg, args) {
   try {
     info = await transporter.sendMail(message);
   } catch (err) {
-    appendLog({ at: date.toISOString(), ok: false, to, cc, bcc, subject, error: String(err?.message || err) });
+    appendLog({ at: date.toISOString(), ok: false, profile: cfg.profileLabel, to, cc, bcc, subject, error: String(err?.message || err) });
     throw new Error('Fallo al enviar por SMTP (' + cfg.smtp.host + ':' + cfg.smtp.port + '): ' + (err?.message || err));
   } finally {
     transporter.close();
   }
 
-  appendLog({ at: date.toISOString(), ok: true, to, cc, bcc, subject, messageId, attachments: attachments.map((a) => a.filename) });
+  appendLog({ at: date.toISOString(), ok: true, profile: cfg.profileLabel, to, cc, bcc, subject, messageId, attachments: attachments.map((a) => a.filename) });
 
   let sentCopy = 'no solicitada';
   if (cfg.saveToSent && cfg.imap?.host) {

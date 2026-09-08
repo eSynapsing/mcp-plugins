@@ -31,54 +31,60 @@ const bool = (v, def) => {
   return def;
 };
 
+// Cuantas cuentas admite como maximo un solo conector. El .mcpb de Claude
+// Desktop solo ofrece formulario para las 3 primeras (ver manifest.json); el
+// camino de script (Codex, account.json) puede rellenar hasta este limite.
+export const MAX_PROFILES = 8;
+
 // Directorio de estado: registro de envios y contador diario.
 export const STATE_DIR = path.join(os.homedir(), '.esynapsing-correu');
 export const LOG_FILE = path.join(STATE_DIR, 'enviaments.jsonl');
 export const CACHE_FILE = path.join(STATE_DIR, 'servidor-detectado.json');
 
-// La autodeteccion de verify_email_setup se guarda aqui para que el usuario
-// no tenga que escribir a mano ningun nombre de servidor.
-// Version del algoritmo de deteccion. La 1.0.x sondeaba toda la lista de
-// proveedores, lo que enviaba las credenciales a servidores de terceros. Desde
-// la version 3 solo se sondea el dominio propio y el preset que identifican los
-// registros MX, asi que descartamos las cachés escritas por el metodo antiguo.
-const DISCOVERY_VERSION = 3;
+// La autodeteccion de verify_email_setup se guarda aqui, UNA ENTRADA POR
+// CORREO, para que el usuario no tenga que escribir a mano ningun nombre de
+// servidor, ni siquiera con varias cuentas configuradas a la vez.
+// Version del algoritmo/formato de la cache. La 1.0.x sondeaba toda la lista
+// de proveedores (credenciales a servidores de terceros). La 3 paso a sondear
+// solo el dominio propio y el preset de los MX. La 4 paso de un unico objeto a
+// un mapa por correo, para poder cachear varias cuentas a la vez.
+const DISCOVERY_VERSION = 4;
 
-export function readDetectedCache(email) {
+function readCacheFile() {
   try {
     const c = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-    if (!c || c.discoveryVersion !== DISCOVERY_VERSION || c.email !== email || !c.smtp?.host) return null;
+    if (!c || c.discoveryVersion !== DISCOVERY_VERSION || typeof c.byEmail !== 'object') return null;
     return c;
   } catch {
     return null;
   }
 }
 
+export function readDetectedCache(email) {
+  const c = readCacheFile();
+  const entry = c?.byEmail?.[email];
+  if (!entry?.smtp?.host) return null;
+  return entry;
+}
+
 export function writeDetectedCache(email, smtp, imap) {
   try {
     fs.mkdirSync(STATE_DIR, { recursive: true });
-    fs.writeFileSync(
-      CACHE_FILE,
-      JSON.stringify({ discoveryVersion: DISCOVERY_VERSION, email, smtp, imap, detectedAt: new Date().toISOString() }, null, 2),
-      'utf8',
-    );
+    const current = readCacheFile() || { discoveryVersion: DISCOVERY_VERSION, byEmail: {} };
+    current.byEmail[email] = { smtp, imap, detectedAt: new Date().toISOString() };
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(current, null, 2), 'utf8');
     return true;
   } catch {
     return false;
   }
 }
 
-export function loadConfig(env = process.env) {
-  const email = str(env.EMAIL_ADDRESS);
-  const password = str(env.EMAIL_PASSWORD);
-  const providerKey = str(env.EMAIL_PROVIDER, 'auto').toLowerCase();
-
-  const errors = [];
-  if (!email) errors.push('Falta la dirección de correo (EMAIL_ADDRESS).');
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push(`La dirección "${email}" no parece válida.`);
-  if (!password) errors.push('Falta la contraseña (EMAIL_PASSWORD).');
-
+// Resuelve smtp/imap para UNA cuenta: preset conocido, manual, o "auto" (cache
+// de autodeteccion previa). Los campos de servidor escritos a mano siempre
+// sobrescriben lo demas, igual que antes de que existieran varias cuentas.
+function resolveServer(email, providerKey, env, prefix) {
   const domain = domainOf(email);
+  const errors = [];
   let smtp = null;
   let imap = null;
   let providerLabel = providerKey;
@@ -90,14 +96,14 @@ export function loadConfig(env = process.env) {
     imap = { ...resolved.imap };
     providerLabel = preset.label;
   } else if (providerKey === 'manual') {
-    const sh = str(env.SMTP_HOST);
-    const ih = str(env.IMAP_HOST);
-    if (!sh) errors.push('Proveedor "manual" seleccionado pero falta SMTP_HOST.');
-    smtp = { host: sh, port: num(env.SMTP_PORT, 465) };
-    imap = ih ? { host: ih, port: num(env.IMAP_PORT, 993) } : null;
+    const sh = str(env[prefix + 'SMTP_HOST']);
+    const ih = str(env[prefix + 'IMAP_HOST']);
+    if (!sh) errors.push('Proveedor "manual" seleccionado pero falta el servidor SMTP.');
+    smtp = { host: sh, port: num(env[prefix + 'SMTP_PORT'], 465) };
+    imap = ih ? { host: ih, port: num(env[prefix + 'IMAP_PORT'], 993) } : null;
     providerLabel = 'Manual';
   } else {
-    // "auto": usamos lo que detectó verify_email_setup en una ejecución anterior.
+    // "auto": usamos lo que detecto verify_email_setup en una ejecucion anterior.
     const cached = readDetectedCache(email);
     if (cached) {
       smtp = cached.smtp;
@@ -108,28 +114,84 @@ export function loadConfig(env = process.env) {
     }
   }
 
-  // Los campos manuales sobrescriben cualquier preset si se han rellenado.
-  if (str(env.SMTP_HOST) && providerKey !== 'manual') {
-    smtp = { host: str(env.SMTP_HOST), port: num(env.SMTP_PORT, smtp?.port ?? 465) };
+  // Los campos manuales sobrescriben cualquier preset o deteccion si se han rellenado.
+  if (str(env[prefix + 'SMTP_HOST']) && providerKey !== 'manual') {
+    smtp = { host: str(env[prefix + 'SMTP_HOST']), port: num(env[prefix + 'SMTP_PORT'], smtp?.port ?? 465) };
     providerLabel += ' (host SMTP sobrescrito a mano)';
   }
-  if (str(env.IMAP_HOST) && providerKey !== 'manual') {
-    imap = { host: str(env.IMAP_HOST), port: num(env.IMAP_PORT, imap?.port ?? 993) };
+  if (str(env[prefix + 'IMAP_HOST']) && providerKey !== 'manual') {
+    imap = { host: str(env[prefix + 'IMAP_HOST']), port: num(env[prefix + 'IMAP_PORT'], imap?.port ?? 993) };
   }
 
+  return { smtp, imap, providerLabel, errors };
+}
+
+function buildProfile(label, email, password, providerKey, env, prefix) {
+  const errors = [];
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push(`La dirección "${email}" (cuenta "${label}") no parece válida.`);
+  if (!password) errors.push(`Falta la contraseña de la cuenta "${label}".`);
+
+  const { smtp, imap, providerLabel, errors: srvErrors } = resolveServer(email, providerKey, env, prefix);
+
+  return {
+    label,
+    email,
+    password,
+    senderName: str(env[prefix + 'SENDER_NAME']) || email,
+    providerKey,
+    providerLabel,
+    smtp,
+    imap,
+    errors: [...errors, ...srvErrors],
+  };
+}
+
+// Devuelve una cuenta por cada ACCOUNT{n}_EMAIL que este relleno, en orden. La
+// primera de la lista es la cuenta por defecto cuando no se especifica ninguna.
+// Compatibilidad: instalaciones de una sola cuenta anteriores a esta version,
+// que usaban EMAIL_ADDRESS a secas (sin prefijo), siguen funcionando igual.
+export function loadProfiles(env = process.env) {
+  const profiles = [];
+
+  const legacyEmail = str(env.EMAIL_ADDRESS);
+  if (legacyEmail) {
+    profiles.push(buildProfile(
+      str(env.SENDER_NAME) || legacyEmail,
+      legacyEmail,
+      str(env.EMAIL_PASSWORD),
+      str(env.EMAIL_PROVIDER, 'auto').toLowerCase(),
+      env,
+      '',
+    ));
+  }
+
+  for (let i = 1; i <= MAX_PROFILES; i += 1) {
+    const prefix = `ACCOUNT${i}_`;
+    const email = str(env[prefix + 'EMAIL']);
+    if (!email) continue;
+    const label = str(env[prefix + 'LABEL']) || email;
+    profiles.push(buildProfile(
+      label,
+      email,
+      str(env[prefix + 'PASSWORD']),
+      str(env[prefix + 'PROVIDER'], 'auto').toLowerCase(),
+      env,
+      prefix,
+    ));
+  }
+
+  return profiles;
+}
+
+// Ajustes compartidos por todas las cuentas de un mismo conector: limites,
+// lista blanca de dominios, adjuntos, firma, carpetas legibles.
+export function loadGlobalSettings(env = process.env) {
   const allowedDomains = str(env.ALLOWED_RECIPIENT_DOMAINS)
     .split(/[,;\s]+/)
     .map((d) => d.replace(/^@/, '').trim().toLowerCase())
     .filter(Boolean);
 
   return {
-    email,
-    password,
-    senderName: str(env.SENDER_NAME) || email,
-    providerKey,
-    providerLabel,
-    smtp,
-    imap,
     saveToSent: bool(env.SAVE_TO_SENT, true),
     signatureHtml: str(env.SIGNATURE_HTML),
     allowedDomains,
@@ -143,7 +205,23 @@ export function loadConfig(env = process.env) {
       .map((f) => f.trim().toLowerCase())
       .filter(Boolean),
     maxBodyChars: num(env.MAX_BODY_CHARS, 8000),
-    errors,
+  };
+}
+
+// Combina una cuenta con los ajustes compartidos en el mismo objeto "cfg" que
+// esperan mail.js e inbox.js (sin cambios en esos modulos).
+export function mergeProfile(profile, globals) {
+  return {
+    profileLabel: profile.label,
+    email: profile.email,
+    password: profile.password,
+    senderName: profile.senderName,
+    providerKey: profile.providerKey,
+    providerLabel: profile.providerLabel,
+    smtp: profile.smtp,
+    imap: profile.imap,
+    ...globals,
+    errors: profile.errors,
   };
 }
 
