@@ -16,38 +16,69 @@ buscar y leer un correo concreto.
 
 ## Instalación
 
-### Codex / app de escritorio de ChatGPT
+Mismo flujo en los dos clientes: añadir el marketplace, instalar el plugin,
+configurar la cuenta con el script. Ninguno de los dos tiene un almacén de
+credenciales propio para plugins de marketplace, así que la contraseña se
+guarda con `configure-windows.ps1`, cifrada con DPAPI de Windows.
+
+### 1. Añadir el marketplace
+
+**Claude Code / Claude Desktop** — Ajustes → Complementos → Tienda → Añadir,
+y pega:
+
+```
+eSynapsing/mcp-plugins
+```
+
+**Codex / app de escritorio de ChatGPT** — en el chat o en el terminal
+integrado:
 
 ```bash
 codex plugin marketplace add eSynapsing/mcp-plugins
 ```
 
-Después instala **eSynapsing Correu** desde la pestaña de plugins.
+### 2. Instalar el plugin
 
-Falta un paso más, porque ni Codex ni ChatGPT tienen almacén de credenciales
-para plugins: hay que guardar la contraseña del buzón, cifrada.
+En la pestaña de Complementos/Tienda del cliente que uses, busca
+**eSynapsing Correu** e instálalo.
+
+### 3. Configurar la cuenta
 
 ```powershell
-& (Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName -EmailAddress info@tuempresa.com -AllowedRecipientDomains "tuempresa.com"
+$rutas = @(
+  "$env:USERPROFILE\.codex\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1",
+  "$env:USERPROFILE\.claude\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1"
+)
+$cfg = Get-ChildItem -Path $rutas -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+& $cfg.FullName
 ```
 
-Codex instala cada plugin en una carpeta que incluye el nombre del marketplace
-y el número de versión (`…\plugins\cache\esynapsing\esynapsing-correu\1.3.0\`),
-así que la ruta cambia en cada actualización. El comando de arriba localiza
-solo la versión instalada más reciente: lo único que tienes que cambiar es el
-correo y los dominios permitidos.
+Busca en las dos ubicaciones posibles (Codex y Claude instalan en carpetas
+distintas, cada una con el número de versión en la ruta) y abre la que
+encuentre. Sin parámetros, pregunta el correo, la contraseña, y el servidor
+SMTP/IMAP uno a uno; si ya hay una cuenta guardada, muestra un menú para
+tocar solo lo que haga falta. La contraseña se pide siempre por teclado, no
+se muestra, y no queda en ningún archivo de texto ni en el historial.
 
-Pide la contraseña por teclado sin mostrarla y la cifra con DPAPI de Windows:
-solo ese usuario de Windows puede descifrarla. No queda en ningún archivo de
-texto ni en el historial del terminal.
+Para una instalación desatendida, con parámetros:
 
-Luego cierra el cliente por completo y vuelve a abrirlo.
+```powershell
+& $cfg.FullName -EmailAddress info@tuempresa.com -AllowedRecipientDomains "tuempresa.com"
+```
 
-### Claude Desktop
+(la contraseña se sigue pidiendo por teclado incluso así: nunca se acepta
+como parámetro).
 
-Descarga el `.mcpb` de [`claude-desktop/`](./claude-desktop/) y haz doble clic.
-Ahí no hace falta configurador: la extensión trae su propio formulario y la
-contraseña va al almacén seguro del sistema operativo.
+Cierra el cliente por completo y vuelve a abrirlo para que recoja la
+configuración guardada.
+
+### Alternativa para Claude Desktop: el `.mcpb`
+
+Si prefieres el formulario nativo de Claude Desktop en vez del script (pide
+los mismos datos, pero con una pantalla propia y sin usar PowerShell), puedes
+saltarte el marketplace: descarga el `.mcpb` de
+[`claude-desktop/`](./claude-desktop/) y haz doble clic. Es el mismo plugin,
+empaquetado para instalarse fuera del marketplace.
 
 ## Comprobar que funciona
 

@@ -12,10 +12,15 @@ Usa las herramientas de eSynapsing Correu para trabajar con la cuenta configurad
 Si el usuario pide configurar, cambiar o revisar su correo (la primera vez o cualquier otra), o si `verify_email_setup` dice que faltan datos, **no le pidas nada en el chat, ni siquiera el correo**. Abre el configurador en su propia ventana, donde responde él directamente:
 
 ```powershell
-Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',(Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+$rutas = @(
+  "$env:USERPROFILE\.codex\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1",
+  "$env:USERPROFILE\.claude\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1"
+)
+$cfg = Get-ChildItem -Path $rutas -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',$cfg.FullName
 ```
 
-Es reentrable: si ya hay una cuenta guardada, se abre un menú (correo y contraseña / servidor SMTP / servidor IMAP) para tocar solo lo que haga falta, sin repetir el resto ni volver a pedir la contraseña si no se quiere cambiar. Si no hay nada guardado, hace esas mismas tres preguntas seguidas. Se puede volver a abrir tantas veces como se quiera, siempre que el usuario lo pida en el chat — por ejemplo "abre la configuración del correo" o "cambia el servidor IMAP".
+Busca en las dos ubicaciones posibles (Codex y Claude instalan el plugin en carpetas distintas) y usa la que exista; si el plugin está instalado en los dos, coge la más reciente. Es reentrable: si ya hay una cuenta guardada, se abre un menú (correo y contraseña / servidor SMTP / servidor IMAP) para tocar solo lo que haga falta, sin repetir el resto ni volver a pedir la contraseña si no se quiere cambiar. Si no hay nada guardado, hace esas mismas tres preguntas seguidas. Se puede volver a abrir tantas veces como se quiera, siempre que el usuario lo pida en el chat — por ejemplo "abre la configuración del correo" o "cambia el servidor IMAP".
 
 Después de guardar, dile al usuario que cierre el cliente por completo y lo vuelva a abrir, porque la configuración se lee al arrancar.
 

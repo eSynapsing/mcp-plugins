@@ -6,7 +6,7 @@
         "./scripts/start.mjs"
       ],
       "cwd": ".",
-      "startup_timeout_sec": 20,
+      "startup_timeout_sec": 60,
       "tool_timeout_sec": 90,
       "default_tools_approval_mode": "writes",
       "env_vars": [
