@@ -278,6 +278,18 @@ manifest.server.entry_point = 'dist/server.mjs';
 manifest.server.mcp_config.args = ['${__dirname}/dist/server.mjs'];
 fs.writeFileSync(path.join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 
+// .codex-plugin/plugin.json lleva su propia "version" a mano, aparte de la de
+// package.json: si no se sincroniza aqui, Codex se queda enseñando la version
+// vieja para siempre aunque el resto del paquete se actualice (paso ya una vez).
+{
+  const codexManifestPath = path.join(staging, '.codex-plugin', 'plugin.json');
+  if (fs.existsSync(codexManifestPath)) {
+    const codexManifest = JSON.parse(fs.readFileSync(codexManifestPath, 'utf8'));
+    codexManifest.version = version;
+    fs.writeFileSync(codexManifestPath, JSON.stringify(codexManifest, null, 2) + '\n', 'utf8');
+  }
+}
+
 // package.json minimo: sin dependencias, porque van dentro del bundle.
 fs.writeFileSync(path.join(staging, 'package.json'), JSON.stringify({
   name: pkg.name, version, description: pkg.description, type: 'module', private: true, license: pkg.license,
