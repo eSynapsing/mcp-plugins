@@ -111,7 +111,47 @@ if ($existing -match "(?ms)^\[mcp_servers\.$([regex]::Escape($ServerName))\].*?(
     Write-Host "Registrado el servidor '$ServerName' en $codexConfig" -ForegroundColor Green
 }
 
-# ---------- 5. Comprobacion rapida ----------
+# ---------- 5. Acceso directo en el Escritorio, para no depender del chat ----------
+#
+# "Abre la configuracion del correo" cada vez que hace falta tocar algo es
+# incomodo. Este acceso directo abre configure-windows.ps1 con un doble clic,
+# buscando la copia mas reciente (esta instalacion fija, o un plugin instalado
+# despues por Codex o Claude Code, lo que sea mas nuevo).
+
+$launcherScript = Join-Path $InstallDir 'scripts\abrir-configuracion.ps1'
+@"
+`$candidatos = @(
+  "$InstallDir\scripts\configure-windows.ps1",
+  "`$env:USERPROFILE\.codex\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1",
+  "`$env:USERPROFILE\.claude\plugins\cache\*\esynapsing-correu\*\scripts\configure-windows.ps1"
+)
+`$cfg = Get-ChildItem -Path `$candidatos -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not `$cfg) {
+  Write-Host "No encuentro el configurador de eSynapsing Correu." -ForegroundColor Yellow
+  Read-Host "Pulsa Intro para cerrar"
+  exit
+}
+& `$cfg.FullName
+"@ | Set-Content -LiteralPath $launcherScript -Encoding UTF8
+
+$desktop = [Environment]::GetFolderPath('Desktop')
+$shortcutPath = Join-Path $desktop 'Configurar eSynapsing Correu.lnk'
+try {
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = 'powershell.exe'
+    $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $launcherScript + '"'
+    $shortcut.WorkingDirectory = $InstallDir
+    $shortcut.Description = 'Abre el configurador de cuentas de eSynapsing Correu'
+    $shortcut.IconLocation = 'shell32.dll,44'
+    $shortcut.Save()
+    Write-Host ''
+    Write-Host "Acceso directo creado en el Escritorio: Configurar eSynapsing Correu" -ForegroundColor Green
+} catch {
+    Write-Host "Aviso: no se pudo crear el acceso directo del Escritorio ($($_.Exception.Message)). No afecta al resto de la instalacion." -ForegroundColor Yellow
+}
+
+# ---------- 6. Comprobacion rapida ----------
 
 Write-Host ''
 Write-Host 'Comprobando que el conector arranca...'

@@ -1,6 +1,6 @@
 {
   "name": "esynapsing-correu",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Envia, lee y busca correo en cuentas SMTP/IMAP propias, sin depender de Google ni Microsoft.",
   "author": {
     "name": "eSynapsing",
@@ -30,6 +30,7 @@
     ],
     "websiteURL": "https://www.esynapsing.com",
     "defaultPrompt": [
+      "Abre la configuracion del correo.",
       "Comprueba si mi cuenta de correo esta bien configurada.",
       "Ensename los correos sin leer de la bandeja de entrada.",
       "Busca los correos de este cliente del ultimo mes y resumelos.",
