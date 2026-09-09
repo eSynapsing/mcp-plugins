@@ -91,7 +91,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         profile: PROFILE_PARAM,
-        limit: { type: 'integer', minimum: 1, maximum: 50, description: 'Cuantos correos listar. Por defecto 10.' },
+        limit: { type: 'integer', minimum: 1, maximum: 200, description: 'Cuantos correos listar. Por defecto 10, maximo 200.' },
       },
       additionalProperties: false,
     },
@@ -131,7 +131,7 @@ const TOOLS = [
       properties: {
         profile: PROFILE_PARAM,
         folder: { type: 'string', description: 'Carpeta a listar. Por defecto INBOX. Debe estar entre las carpetas autorizadas.' },
-        limit: { type: 'integer', minimum: 1, maximum: 50, description: 'Cuantos correos listar. Por defecto 20, maximo 50.' },
+        limit: { type: 'integer', minimum: 1, maximum: 200, description: 'Cuantos correos listar. Por defecto 20, maximo 200.' },
         unseen_only: { type: 'boolean', description: 'Si es true, solo los no leidos.' },
       },
       additionalProperties: false,
@@ -156,7 +156,7 @@ const TOOLS = [
         before: { type: 'string', description: 'Solo correos anteriores a esta fecha. Formato AAAA-MM-DD.' },
         unseen_only: { type: 'boolean', description: 'Si es true, solo los no leidos.' },
         folder: { type: 'string', description: 'Carpeta donde buscar. Por defecto INBOX.' },
-        limit: { type: 'integer', minimum: 1, maximum: 50, description: 'Maximo de resultados. Por defecto 20, maximo 50.' },
+        limit: { type: 'integer', minimum: 1, maximum: 200, description: 'Maximo de resultados. Por defecto 20, maximo 200.' },
       },
       additionalProperties: false,
     },
@@ -185,7 +185,7 @@ const TOOLS = [
 ];
 
 const server = new Server(
-  { name: 'esynapsing-correu', version: '1.4.0' },
+  { name: 'esynapsing-correu', version: '1.4.1' },
   {
     capabilities: { tools: {} },
     instructions:

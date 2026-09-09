@@ -53,8 +53,17 @@ const DISCOVERY_VERSION = 4;
 function readCacheFile() {
   try {
     const c = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-    if (!c || c.discoveryVersion !== DISCOVERY_VERSION || typeof c.byEmail !== 'object') return null;
-    return c;
+    if (!c) return null;
+    if (c.discoveryVersion === DISCOVERY_VERSION && typeof c.byEmail === 'object') return c;
+    // Formato de la version 3 (un unico correo por fichero, sin byEmail): el
+    // algoritmo de deteccion no cambio, solo donde se guarda. Migrarlo en vez
+    // de descartarlo evita que instalaciones ya funcionando (una sola cuenta,
+    // que era el unico caso que existia hasta ahora) se queden sin SMTP/IMAP
+    // hasta que alguien vuelva a llamar a verify_email_setup a mano.
+    if (c.discoveryVersion === 3 && c.email && c.smtp?.host) {
+      return { discoveryVersion: DISCOVERY_VERSION, byEmail: { [c.email]: { smtp: c.smtp, imap: c.imap, detectedAt: c.detectedAt } } };
+    }
+    return null;
   } catch {
     return null;
   }
