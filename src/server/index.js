@@ -91,7 +91,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         profile: PROFILE_PARAM,
-        limit: { type: 'integer', minimum: 1, maximum: 200, description: 'Cuantos correos listar. Por defecto 10, maximo 200.' },
+        limit: { type: 'integer', minimum: 1, maximum: globals.maxSearchResults, description: 'Cuantos correos listar. Por defecto 10, maximo ' + globals.maxSearchResults + '.' },
       },
       additionalProperties: false,
     },
@@ -131,7 +131,7 @@ const TOOLS = [
       properties: {
         profile: PROFILE_PARAM,
         folder: { type: 'string', description: 'Carpeta a listar. Por defecto INBOX. Debe estar entre las carpetas autorizadas.' },
-        limit: { type: 'integer', minimum: 1, maximum: 200, description: 'Cuantos correos listar. Por defecto 20, maximo 200.' },
+        limit: { type: 'integer', minimum: 1, maximum: globals.maxSearchResults, description: 'Cuantos correos listar. Por defecto 20, maximo ' + globals.maxSearchResults + '.' },
         unseen_only: { type: 'boolean', description: 'Si es true, solo los no leidos.' },
       },
       additionalProperties: false,
@@ -156,7 +156,7 @@ const TOOLS = [
         before: { type: 'string', description: 'Solo correos anteriores a esta fecha. Formato AAAA-MM-DD.' },
         unseen_only: { type: 'boolean', description: 'Si es true, solo los no leidos.' },
         folder: { type: 'string', description: 'Carpeta donde buscar. Por defecto INBOX.' },
-        limit: { type: 'integer', minimum: 1, maximum: 200, description: 'Maximo de resultados. Por defecto 20, maximo 200.' },
+        limit: { type: 'integer', minimum: 1, maximum: globals.maxSearchResults, description: 'Maximo de resultados. Por defecto 20, maximo ' + globals.maxSearchResults + '.' },
       },
       additionalProperties: false,
     },
@@ -185,7 +185,7 @@ const TOOLS = [
 ];
 
 const server = new Server(
-  { name: 'esynapsing-correu', version: '1.4.1' },
+  { name: 'esynapsing-correu', version: '1.5.0' },
   {
     capabilities: { tools: {} },
     instructions:
@@ -275,6 +275,7 @@ function configSummary(cfg) {
     'Carpeta de adjuntos autorizada: ' + (cfg.attachmentsDir || 'sin restriccion'),
     'Carpetas legibles: ' + (cfg.readableFolders.includes('*') ? 'todas' : (cfg.readableFolders.length ? cfg.readableFolders.join(', ') : 'bandeja de entrada y enviados')),
     'Maximo de caracteres por cuerpo leido: ' + cfg.maxBodyChars,
+    'Maximo de resultados por listado/busqueda: ' + cfg.maxSearchResults,
     'Registro de envios: ' + LOG_FILE,
   ];
   return lines.join('\n');

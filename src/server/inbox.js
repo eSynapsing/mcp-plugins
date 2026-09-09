@@ -220,7 +220,7 @@ export async function listFolders(cfg) {
 }
 
 export async function listMessages(cfg, { folder, limit = 20, unseenOnly = false } = {}) {
-  const cap = Math.min(Math.max(Number(limit) || 20, 1), 200);
+  const cap = Math.min(Math.max(Number(limit) || 20, 1), cfg.maxSearchResults);
   return withClient(cfg, async (client) => {
     const path = await resolveFolder(cfg, client, folder);
     const lock = await client.getMailboxLock(path, { readOnly: true });
@@ -247,7 +247,7 @@ export async function listMessages(cfg, { folder, limit = 20, unseenOnly = false
 }
 
 export async function searchMessages(cfg, criteria = {}) {
-  const cap = Math.min(Math.max(Number(criteria.limit) || 20, 1), 200);
+  const cap = Math.min(Math.max(Number(criteria.limit) || 20, 1), cfg.maxSearchResults);
   return withClient(cfg, async (client) => {
     const path = await resolveFolder(cfg, client, criteria.folder);
     const lock = await client.getMailboxLock(path, { readOnly: true });

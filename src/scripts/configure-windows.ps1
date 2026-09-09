@@ -43,6 +43,7 @@ param(
     [string]$SignatureHtml = '',
     [string]$ReadableFolders = '',
     [int]$MaxBodyChars = 0,
+    [int]$MaxSearchResults = 0,
     [switch]$DoNotSaveToSent
 )
 
@@ -127,6 +128,7 @@ $global = [ordered]@{
     SIGNATURE_HTML = ''
     READABLE_FOLDERS = ''
     MAX_BODY_CHARS = 8000
+    MAX_SEARCH_RESULTS = 200
 }
 
 $existia = $false
@@ -477,6 +479,7 @@ if ($modoParametros) {
     if ($PSBoundParameters.ContainsKey('SignatureHtml')) { $global['SIGNATURE_HTML'] = $SignatureHtml }
     if ($PSBoundParameters.ContainsKey('ReadableFolders')) { $global['READABLE_FOLDERS'] = $ReadableFolders }
     if ($MaxBodyChars) { $global['MAX_BODY_CHARS'] = $MaxBodyChars }
+    if ($MaxSearchResults) { $global['MAX_SEARCH_RESULTS'] = $MaxSearchResults }
     if ($DoNotSaveToSent.IsPresent) { $global['SAVE_TO_SENT'] = $false }
 
     if (-not $p.EMAIL_ADDRESS) { throw 'Falta -EmailAddress.' }

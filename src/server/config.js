@@ -214,6 +214,11 @@ export function loadGlobalSettings(env = process.env) {
       .map((f) => f.trim().toLowerCase())
       .filter(Boolean),
     maxBodyChars: num(env.MAX_BODY_CHARS, 8000),
+    // Tope de resultados de list_inbox, search_email y list_recent_sent.
+    // Por defecto 200; se puede subir para listados grandes (por ejemplo,
+    // todos los correos de un remitente en un año), a costa de mas contexto
+    // consumido en la conversacion por cada listado.
+    maxSearchResults: num(env.MAX_SEARCH_RESULTS, 200),
   };
 }
 
