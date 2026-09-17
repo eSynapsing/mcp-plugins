@@ -14,9 +14,10 @@ Admite varias cuentas a la vez (hasta 3 en el formulario de Claude Desktop,
 sin límite práctico por script en Codex): si hay más de una configurada,
 Claude pregunta con cuál quieres enviar o leer antes de hacerlo.
 
-Nueve herramientas: listar las cuentas configuradas, verificar la
+Diez herramientas: listar las cuentas configuradas, verificar la
 configuración, enviar, listar enviados, auditar el registro local, listar
-carpetas, listar la bandeja de entrada, buscar y leer un correo concreto.
+carpetas, listar la bandeja de entrada, buscar, leer un correo concreto y
+descargar un adjunto suyo a una carpeta autorizada del ordenador.
 
 ## Instalación
 
@@ -145,12 +146,14 @@ cumplen aunque se malinterprete una instrucción:
 
 - Lista blanca de dominios de destinatarios
 - Tope de destinatarios por correo y de envíos al día
-- Carpeta autorizada para adjuntos
+- Carpeta autorizada para adjuntos salientes
+- Carpeta y tamaño máximo para adjuntos descargados de un correo
 - Carpetas del buzón que se pueden leer (por defecto, entrada y enviados)
 - Registro local de auditoría de todos los envíos
 
 La lectura del buzón se hace **en modo solo lectura**: no marca como leído, no
-mueve y no borra.
+mueve y no borra. Un adjunto descargado sigue siendo contenido de un tercero:
+el conector nunca lo abre ni lo ejecuta, solo lo guarda.
 
 **Configura siempre la lista blanca de dominios.** El contenido de un correo
 entrante lo escribe un tercero, y esa lista es lo que impide que algo llegado

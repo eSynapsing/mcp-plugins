@@ -44,6 +44,8 @@ param(
     [string]$ReadableFolders = '',
     [int]$MaxBodyChars = 0,
     [int]$MaxSearchResults = 0,
+    [string]$DownloadsDir = '',
+    [int]$MaxDownloadMb = 0,
     [switch]$DoNotSaveToSent
 )
 
@@ -129,6 +131,8 @@ $global = [ordered]@{
     READABLE_FOLDERS = ''
     MAX_BODY_CHARS = 8000
     MAX_SEARCH_RESULTS = 200
+    DOWNLOADS_DIR = ''
+    MAX_DOWNLOAD_MB = 20
 }
 
 $existia = $false
@@ -480,6 +484,8 @@ if ($modoParametros) {
     if ($PSBoundParameters.ContainsKey('ReadableFolders')) { $global['READABLE_FOLDERS'] = $ReadableFolders }
     if ($MaxBodyChars) { $global['MAX_BODY_CHARS'] = $MaxBodyChars }
     if ($MaxSearchResults) { $global['MAX_SEARCH_RESULTS'] = $MaxSearchResults }
+    if ($PSBoundParameters.ContainsKey('DownloadsDir')) { $global['DOWNLOADS_DIR'] = $DownloadsDir }
+    if ($MaxDownloadMb) { $global['MAX_DOWNLOAD_MB'] = $MaxDownloadMb }
     if ($DoNotSaveToSent.IsPresent) { $global['SAVE_TO_SENT'] = $false }
 
     if (-not $p.EMAIL_ADDRESS) { throw 'Falta -EmailAddress.' }

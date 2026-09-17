@@ -22,7 +22,9 @@
         "SIGNATURE_HTML",
         "READABLE_FOLDERS",
         "MAX_BODY_CHARS",
-        "MAX_SEARCH_RESULTS"
+        "MAX_SEARCH_RESULTS",
+        "DOWNLOADS_DIR",
+        "MAX_DOWNLOAD_MB"
       ]
     }
   }

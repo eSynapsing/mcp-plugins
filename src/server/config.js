@@ -208,6 +208,10 @@ export function loadGlobalSettings(env = process.env) {
     maxPerDay: num(env.MAX_EMAILS_PER_DAY, 20),
     attachmentsDir: str(env.ATTACHMENTS_DIR),
     maxAttachmentBytes: num(env.MAX_ATTACHMENT_MB, 20) * 1024 * 1024,
+    // Descarga de adjuntos entrantes (v1.6.0). Vacio = subcarpeta fija bajo
+    // el directorio de estado, nunca "cualquier sitio del disco" por defecto.
+    downloadsDir: str(env.DOWNLOADS_DIR),
+    maxDownloadBytes: num(env.MAX_DOWNLOAD_MB, 20) * 1024 * 1024,
     // Lectura del buzon (v1.1.0). Vacio = solo INBOX y Enviados. "*" = todas.
     readableFolders: str(env.READABLE_FOLDERS)
       .split(/[,;]+/)
