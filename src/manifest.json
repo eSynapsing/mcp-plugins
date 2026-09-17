@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "esynapsing-correu",
   "display_name": "eSynapsing Correu",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Envia, lee y busca correo en tu propia cuenta o cuentas (SMTP/IMAP), sin Google ni Microsoft.",
   "long_description": "Conecta Claude con el buzón (o los buzones) de correo de tu empresa mediante SMTP e IMAP estándar. Sirve para cualquier proveedor: IONOS, OVH, Strato, Hostinger, Zoho, Gmail con contraseña de aplicación o cualquier alojamiento con cPanel.\n\nAdmite hasta 3 cuentas a la vez: si configuras más de una, Claude te preguntará con cuál quieres enviar o leer cada vez. Los correos salen desde la dirección real de esa cuenta y se guarda una copia en su carpeta de Enviados, igual que si los hubieras escrito tú. Las contraseñas se guardan en el almacén seguro del sistema operativo, nunca en un archivo de texto.\n\nIncluye límites de seguridad configurables (compartidos entre todas las cuentas): lista de dominios de destinatarios permitidos, número máximo de destinatarios por correo, máximo de correos al día y una carpeta autorizada para los adjuntos. Todos los envíos quedan registrados en un archivo local de auditoría.",
   "author": {

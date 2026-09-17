@@ -207,7 +207,7 @@ const TOOLS = [
 ];
 
 const server = new Server(
-  { name: 'esynapsing-correu', version: '1.6.0' },
+  { name: 'esynapsing-correu', version: '1.6.1' },
   {
     capabilities: { tools: {} },
     instructions:
@@ -274,7 +274,7 @@ function handleListProfiles() {
   const lines = [
     'Cuentas configuradas (' + profiles.length + '):',
     '',
-    ...profiles.map((p, i) => '- "' + p.label + '" — ' + p.email + (i === 0 ? '  [por defecto]' : '')
+    ...profiles.map((p, i) => '- "' + p.label + '" — ' + p.email + '  [' + p.type.toUpperCase() + ']' + (i === 0 ? '  [por defecto]' : '')
       + (p.errors.length ? '  (PROBLEMAS: ' + p.errors.join('; ') + ')' : '')),
   ];
   if (profiles.length > 1) {

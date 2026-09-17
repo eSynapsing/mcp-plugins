@@ -135,6 +135,11 @@ function resolveServer(email, providerKey, env, prefix) {
   return { smtp, imap, providerLabel, errors };
 }
 
+// El "tipo" de cuenta identifica que backend de autenticacion/protocolo usa.
+// Hoy solo existe "imap" (SMTP/IMAP con contrasena). Se deja preparado para
+// que un futuro tipo "microsoft" (OAuth2 + Graph API) conviva con estas en
+// la misma lista de perfiles, sin cambiar la forma en que se seleccionan ni
+// se muestran.
 function buildProfile(label, email, password, providerKey, env, prefix) {
   const errors = [];
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push(`La dirección "${email}" (cuenta "${label}") no parece válida.`);
@@ -143,6 +148,7 @@ function buildProfile(label, email, password, providerKey, env, prefix) {
   const { smtp, imap, providerLabel, errors: srvErrors } = resolveServer(email, providerKey, env, prefix);
 
   return {
+    type: 'imap',
     label,
     email,
     password,
